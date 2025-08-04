@@ -69,31 +69,21 @@ export const IBKRDiagnostic: React.FC = () => {
     setResults([]);
     
     const tests = [
-      // 基础连接测试 - localhost
-      { method: 'localhost:4002 - /v1/api/one/user', url: 'http://localhost:4002/v1/api/one/user' },
-      { method: 'localhost:4002 - /v1/api/iserver/auth/status', url: 'http://localhost:4002/v1/api/iserver/auth/status' },
-      { method: 'localhost:4002 - /v1/api/iserver/account', url: 'http://localhost:4002/v1/api/iserver/account' },
+      // 基础连接测试 - localhost (端口5000, HTTPS)
+      { method: 'localhost:5000 - /v1/api/iserver/auth/status', url: 'https://localhost:5000/v1/api/iserver/auth/status' },
+      { method: 'localhost:5000 - /v1/api/iserver/accounts', url: 'https://localhost:5000/v1/api/iserver/accounts' },
       
-      // 基础连接测试 - 127.0.0.1
-      { method: '127.0.0.1:4002 - /v1/api/one/user', url: 'http://127.0.0.1:4002/v1/api/one/user' },
-      { method: '127.0.0.1:4002 - /v1/api/iserver/auth/status', url: 'http://127.0.0.1:4002/v1/api/iserver/auth/status' },
-      { method: '127.0.0.1:4002 - /v1/api/iserver/account', url: 'http://127.0.0.1:4002/v1/api/iserver/account' },
+      // 基础连接测试 - 127.0.0.1 (端口5000, HTTPS)
+      { method: '127.0.0.1:5000 - /v1/api/iserver/auth/status', url: 'https://127.0.0.1:5000/v1/api/iserver/auth/status' },
+      { method: '127.0.0.1:5000 - /v1/api/iserver/accounts', url: 'https://127.0.0.1:5000/v1/api/iserver/accounts' },
       
-      // 市场数据端点
-      { method: 'localhost:4002 - /v1/api/iserver/marketdata/snapshot', url: 'http://localhost:4002/v1/api/iserver/marketdata/snapshot' },
-      { method: '127.0.0.1:4002 - /v1/api/iserver/marketdata/snapshot', url: 'http://127.0.0.1:4002/v1/api/iserver/marketdata/snapshot' },
+      // 市场数据端点 (端口5000, HTTPS)
+      { method: 'localhost:5000 - /v1/api/iserver/marketdata/snapshot', url: 'https://localhost:5000/v1/api/iserver/marketdata/snapshot' },
+      { method: '127.0.0.1:5000 - /v1/api/iserver/marketdata/snapshot', url: 'https://127.0.0.1:5000/v1/api/iserver/marketdata/snapshot' },
       
-      // 账户信息端点
-      { method: 'localhost:4002 - /v1/api/iserver/accounts', url: 'http://localhost:4002/v1/api/iserver/accounts' },
-      { method: '127.0.0.1:4002 - /v1/api/iserver/accounts', url: 'http://127.0.0.1:4002/v1/api/iserver/accounts' },
-      
-      // 测试不同的端口（以防万一）
-      { method: 'localhost:7496 - /v1/api/one/user', url: 'http://localhost:7496/v1/api/one/user' },
-      { method: 'localhost:7497 - /v1/api/one/user', url: 'http://localhost:7497/v1/api/one/user' },
-      
-      // 测试WebSocket连接
-      { method: 'WebSocket - ws://localhost:4002', url: 'ws://localhost:4002' },
-      { method: 'WebSocket - ws://127.0.0.1:4002', url: 'ws://127.0.0.1:4002' },
+      // 合约搜索端点 (端口5000, HTTPS)
+      { method: 'localhost:5000 - /v1/api/iserver/contract/search', url: 'https://localhost:5000/v1/api/iserver/contract/search' },
+      { method: '127.0.0.1:5000 - /v1/api/iserver/contract/search', url: 'https://127.0.0.1:5000/v1/api/iserver/contract/search' },
     ];
 
     const newResults: DiagnosticResult[] = [];

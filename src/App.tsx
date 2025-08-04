@@ -15,6 +15,9 @@ import { SimpleIBKRTest } from './components/SimpleIBKRTest';
 import { QuickIBKRTest } from './components/QuickIBKRTest';
 import { PortTest } from './components/PortTest';
 import { IBKRDiagnostic } from './components/IBKRDiagnostic';
+import { IBKRTest } from './components/IBKRTest';
+import { ContractConfig } from './components/ContractConfig';
+import { DynamicContractSearch } from './components/DynamicContractSearch';
 import { IBGatewayConfigCheck } from './components/IBGatewayConfigCheck';
 import { JavaCompatibleTest } from './components/JavaCompatibleTest';
 import { useRealTimeData } from './hooks/useRealTimeData';
@@ -132,26 +135,38 @@ function AppContent() {
         <OrderHistory />
       </div>
       
-      {/* IBKR连接诊断工具 */}
-      <IBKRDiagnostic />
+      {/* IBKR诊断工具 */}
+      <div className="container mx-auto px-6 py-4">
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-white mb-4">IBKR连接诊断</h2>
+          <IBKRDiagnostic />
+        </div>
+      </div>
+
+                  {/* 动态期货合约搜索 */}
+            <div className="container mx-auto px-6 py-4">
+              <DynamicContractSearch />
+            </div>
+
+            {/* 期货合约配置 */}
+            <div className="container mx-auto px-6 py-4">
+              <ContractConfig />
+            </div>
+
+      {/* IBKR实时数据测试 */}
+      <div className="container mx-auto px-6 py-4">
+        <IBKRTest />
+      </div>
       
-      {/* IB Gateway配置检查 */}
-      <IBGatewayConfigCheck />
-      
-      {/* Java兼容性测试 */}
-      <JavaCompatibleTest />
-      
-      {/* IBKR连接测试面板 */}
-      <IBKRTestPanel />
-      
-      {/* 简单IBKR测试 */}
-      <SimpleIBKRTest />
-      
-      {/* 快速IBKR测试 */}
-      <QuickIBKRTest />
-      
-      {/* 端口测试 */}
-      <PortTest />
+      {/* 其他IBKR功能保留但隐藏测试界面 */}
+      <div style={{ display: 'none' }}>
+        <IBGatewayConfigCheck />
+        <JavaCompatibleTest />
+        <IBKRTestPanel />
+        <SimpleIBKRTest />
+        <QuickIBKRTest />
+        <PortTest />
+      </div>
     </div>
   );
 }
