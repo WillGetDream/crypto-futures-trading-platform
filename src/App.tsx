@@ -8,9 +8,20 @@ import { OrderHistory } from './components/OrderHistory';
 import { PriceAlert } from './components/PriceAlert';
 import { CryptoSelector } from './components/CryptoSelector';
 import { FuturesTrading } from './components/FuturesTrading';
+import { ClerkAuth } from './components/ClerkAuth';
+import { TempAuth } from './components/TempAuth';
+import { IBKRTestPanel } from './components/IBKRTestPanel';
+import { SimpleIBKRTest } from './components/SimpleIBKRTest';
+import { QuickIBKRTest } from './components/QuickIBKRTest';
+import { PortTest } from './components/PortTest';
+import { IBKRDiagnostic } from './components/IBKRDiagnostic';
+import { IBGatewayConfigCheck } from './components/IBGatewayConfigCheck';
+import { JavaCompatibleTest } from './components/JavaCompatibleTest';
 import { useRealTimeData } from './hooks/useRealTimeData';
+import { useUser } from '@clerk/clerk-react';
 
-function App() {
+function AppContent() {
+  const { isSignedIn, isLoaded } = useUser();
   const { 
     currentPrice, 
     priceChange24h, 
@@ -21,6 +32,26 @@ function App() {
     portfolioData,
     switchCrypto 
   } = useRealTimeData();
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">加载中...</div>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    // 检查是否配置了 Clerk Key
+    const hasClerkKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY && 
+                       import.meta.env.VITE_CLERK_PUBLISHABLE_KEY !== 'pk_test_mock_key_for_development';
+    
+    if (!hasClerkKey) {
+      return <TempAuth />;
+    }
+    
+    return <ClerkAuth />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -100,8 +131,33 @@ function App() {
         {/* 订单历史 */}
         <OrderHistory />
       </div>
+      
+      {/* IBKR连接诊断工具 */}
+      <IBKRDiagnostic />
+      
+      {/* IB Gateway配置检查 */}
+      <IBGatewayConfigCheck />
+      
+      {/* Java兼容性测试 */}
+      <JavaCompatibleTest />
+      
+      {/* IBKR连接测试面板 */}
+      <IBKRTestPanel />
+      
+      {/* 简单IBKR测试 */}
+      <SimpleIBKRTest />
+      
+      {/* 快速IBKR测试 */}
+      <QuickIBKRTest />
+      
+      {/* 端口测试 */}
+      <PortTest />
     </div>
   );
+}
+
+function App() {
+  return <AppContent />;
 }
 
 export default App;

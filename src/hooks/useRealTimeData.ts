@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { API_CONFIG, apiUtils } from '../config/api';
+import { ibkrService, IBKRMarketData } from '../services/ibkrService';
 
 export interface PriceData {
   time: string;
@@ -148,21 +150,105 @@ const fetchCryptoPrice = async (cryptoId: string) => {
   }
 };
 
-// 获取期货合约价格数据的函数（模拟数据）
+// 获取期货合约价格数据的函数（使用IBKR服务）
 const fetchFuturesPrice = async (futuresId: string) => {
   try {
-    // 由于期货数据需要专业的金融数据提供商，这里使用模拟数据
+    // 对于MES期货，使用IBKR服务获取实时数据
+    if (futuresId === 'mes') {
+      const mesData = await ibkrService.subscribeMESData();
+      if (mesData) {
+        return {
+          usd: mesData.price,
+          usd_24h_change: 0, // IBKR数据不包含24小时变化，需要单独计算
+          usd_24h_vol: mesData.volume
+        };
+      }
+    }
+    
+    // 对于其他期货，使用原有逻辑
+    const symbol = API_CONFIG.FUTURES_SYMBOLS[futuresId as keyof typeof API_CONFIG.FUTURES_SYMBOLS];
+    if (!symbol) {
+      throw new Error(`未找到期货合约映射: ${futuresId}`);
+    }
+    
+    // 获取实时价格数据
+    const response = await fetch(
+      `${API_CONFIG.ALPHA_VANTAGE.BASE_URL}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_CONFIG.ALPHA_VANTAGE.API_KEY}`
+    );
+    
+    apiUtils.checkResponse(response);
+    const data = await apiUtils.parseJson(response);
+    const quote = data['Global Quote'];
+    
+    if (!quote || !quote['05. price']) {
+      // 如果API限制或数据不可用，使用备用数据源
+      console.warn('Alpha Vantage API数据不可用，尝试备用数据源');
+      return await fetchFuturesPriceBackup(futuresId);
+    }
+    
+    const currentPrice = parseFloat(quote['05. price']);
+    const change = parseFloat(quote['09. change'] || '0');
+    const changePercent = parseFloat(quote['10. change percent']?.replace('%', '') || '0');
+    const volume = parseInt(quote['06. volume'] || '0');
+    
+    return {
+      usd: currentPrice,
+      usd_24h_change: changePercent,
+      usd_24h_vol: volume
+    };
+    
+  } catch (error) {
+    console.warn('IBKR/Alpha Vantage API调用失败，使用备用数据源:', error);
+    return await fetchFuturesPriceBackup(futuresId);
+  }
+};
+
+// 备用期货数据源 - 使用Yahoo Finance API
+const fetchFuturesPriceBackup = async (futuresId: string) => {
+  try {
+    const symbol = API_CONFIG.FUTURES_SYMBOLS[futuresId as keyof typeof API_CONFIG.FUTURES_SYMBOLS];
+    if (!symbol) {
+      throw new Error(`未找到期货合约映射: ${futuresId}`);
+    }
+    
+    // 使用Yahoo Finance的免费API
+    const response = await fetch(
+      `${API_CONFIG.YAHOO_FINANCE.BASE_URL}/${symbol}?interval=1d&range=1d`
+    );
+    
+    apiUtils.checkResponse(response);
+    const data = await apiUtils.parseJson(response);
+    const result = data.chart.result[0];
+    const quote = result.indicators.quote[0];
+    const meta = result.meta;
+    
+    const currentPrice = meta.regularMarketPrice;
+    const previousClose = meta.previousClose;
+    const change = currentPrice - previousClose;
+    const changePercent = (change / previousClose) * 100;
+    const volume = quote.volume[quote.volume.length - 1] || 0;
+    
+    return {
+      usd: currentPrice,
+      usd_24h_change: changePercent,
+      usd_24h_vol: volume
+    };
+    
+  } catch (error) {
+    console.error('所有API都失败，使用模拟数据:', error);
+    
+    // 最后的备用方案 - 使用更准确的模拟数据
     const basePrice = {
-      'mes': 5200,    // E-mini S&P 500
+      'mes': 6261,    // E-mini S&P 500 - 当前市场价格
       'mnq': 18500,   // E-mini NASDAQ-100
       'mym': 38500,   // E-mini Dow Jones
       'mrty': 2100    // E-mini Russell 2000
     }[futuresId] || 5000;
     
     // 模拟价格波动
-    const randomChange = (Math.random() - 0.5) * 0.02; // ±1%的随机波动
+    const randomChange = (Math.random() - 0.5) * 0.01; // ±0.5%的随机波动
     const currentPrice = basePrice * (1 + randomChange);
-    const change24h = (Math.random() - 0.5) * 4; // ±2%的24小时变化
+    const change24h = (Math.random() - 0.5) * 2; // ±1%的24小时变化
     const volume = Math.random() * 1000000 + 500000; // 随机成交量
     
     return {
@@ -170,9 +256,6 @@ const fetchFuturesPrice = async (futuresId: string) => {
       usd_24h_change: change24h,
       usd_24h_vol: volume
     };
-  } catch (error) {
-    console.error('获取期货价格失败:', error);
-    return null;
   }
 };
 
