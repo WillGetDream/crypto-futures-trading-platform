@@ -1,10 +1,9 @@
-name: Deploy to Vercel
+name: Auto Deploy to Vercel
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -25,10 +24,19 @@ jobs:
     - name: Build project
       run: npm run build
     
-    - name: Deploy to Vercel
+    - name: Deploy to Vercel (with token)
+      if: secrets.VERCEL_TOKEN
       uses: amondnet/vercel-action@v25
       with:
         vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.ORG_ID }}
-        vercel-project-id: ${{ secrets.PROJECT_ID }}
-        vercel-args: '--prod' 
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        vercel-args: '--prod'
+    
+    - name: Deploy to Vercel (without token)
+      if: !secrets.VERCEL_TOKEN
+      run: |
+        echo "⚠️ 未配置 VERCEL_TOKEN，请手动部署"
+        echo "1. 访问 https://vercel.com/new"
+        echo "2. 导入仓库: WillGetDream/crypto-futures-trading-platform"
+        echo "3. 点击 Deploy" 
