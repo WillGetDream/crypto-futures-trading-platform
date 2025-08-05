@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>搜索修复测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success { background: #4CAF50; color: white; }
+        .error { background: #f44336; color: white; }
+        .info { background: #2196F3; color: white; }
+        input {
+            padding: 10px;
+            width: 200px;
+            margin-right: 10px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 搜索修复测试</h1>
+        
+        <div class="info">
+            <strong>测试说明：</strong> 测试搜索功能是否还会闪烁和显示错误内容。
+        </div>
+        
+        <div class="mb-4">
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="输入 NQ 测试"
+                value="NQ"
+            />
+            <button onclick="testSearch()">测试搜索</button>
+            <button onclick="clearTest()">清除测试</button>
+        </div>
+
+        <div class="mb-4">
+            <button onclick="testAutoSearch()">测试自动搜索</button>
+            <button onclick="resetLocalStorage()">重置本地存储</button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let searchCount = 0;
+
+        async function testSearch() {
+            const symbol = document.getElementById('searchInput').value.trim();
+            if (!symbol) {
+                showResult('请输入合约符号', 'error');
+                return;
+            }
+
+            searchCount++;
+            showResult(`第 ${searchCount} 次搜索: ${symbol}`, 'info');
+            
+            // 模拟搜索延迟
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 模拟搜索结果
+            const results = {
+                'NQ': [
+                    { symbol: 'NQ', description: 'E-mini NASDAQ 100 DEC25', conid: '563947738' },
+                    { symbol: 'NQ', description: 'E-mini NASDAQ 100 SEP25', conid: '691171690' }
+                ],
+                'MES': [
+                    { symbol: 'MES', description: 'Micro E-Mini S&P 500 DEC25', conid: '730283085' },
+                    { symbol: 'MES', description: 'Micro E-Mini S&P 500 SEP25', conid: '711280067' }
+                ],
+                'MNQ': [
+                    { symbol: 'MNQ', description: 'Micro E-Mini Nasdaq-100 DEC25', conid: '730283094' },
+                    { symbol: 'MNQ', description: 'Micro E-Mini Nasdaq-100 SEP25', conid: '711280073' }
+                ]
+            };
+
+            const upperSymbol = symbol.toUpperCase();
+            const foundResults = results[upperSymbol] || [];
+            
+            if (foundResults.length > 0) {
+                let html = `✅ 找到 ${foundResults.length} 个 ${upperSymbol} 合约:\n`;
+                foundResults.forEach(contract => {
+                    html += `- ${contract.description} (ID: ${contract.conid})\n`;
+                });
+                showResult(html, 'success');
+            } else {
+                showResult(`❌ 未找到 ${upperSymbol} 合约`, 'error');
+            }
+        }
+
+        function testAutoSearch() {
+            showResult('测试自动搜索功能...\n这应该只在页面首次加载时执行一次', 'info');
+        }
+
+        function clearTest() {
+            searchCount = 0;
+            document.getElementById('searchInput').value = '';
+            showResult('测试已清除', 'info');
+        }
+
+        function resetLocalStorage() {
+            localStorage.removeItem('searchManagerInitialized');
+            showResult('本地存储已重置，下次加载时会重新执行自动搜索', 'success');
+        }
+
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+
+        // 页面加载时显示说明
+        window.onload = function() {
+            showResult('页面加载完成。\n1. 输入 NQ 并点击测试搜索\n2. 观察是否还会显示 MES 的结果\n3. 如果正常显示 NQ 的结果，说明修复成功', 'info');
+        };
+    </script>
+</body>
+</html> 

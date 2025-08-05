@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>测试IBKR证书</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background: #4CAF50;
+            color: white;
+        }
+        .error {
+            background: #f44336;
+            color: white;
+        }
+        .warning {
+            background: #ff9800;
+            color: white;
+        }
+        .info {
+            background: #2196F3;
+            color: white;
+        }
+        .step {
+            background: #333;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        .link {
+            color: #4CAF50;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 测试IBKR证书连接</h1>
+        
+        <div class="warning">
+            <strong>⚠️ SSL证书问题解决方案：</strong><br>
+            如果遇到证书错误，请按以下步骤操作：
+        </div>
+        
+        <div class="step">
+            <strong>步骤1:</strong> 点击 <span class="link" onclick="openIBKRDirect()">直接访问IBKR Gateway</span> 接受SSL证书
+        </div>
+        
+        <div class="step">
+            <strong>步骤2:</strong> 在打开的页面中点击"高级" → "继续前往localhost:5000"
+        </div>
+        
+        <div class="step">
+            <strong>步骤3:</strong> 返回此页面，点击下面的测试按钮
+        </div>
+        
+        <button onclick="testProxyConnection()">测试代理连接</button>
+        <button onclick="testAuthStatus()">测试认证状态</button>
+        <button onclick="testMarketData()">测试市场数据</button>
+        <button onclick="checkIBKRStatus()">检查IBKR Gateway状态</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function openIBKRDirect() {
+            window.open('https://localhost:5000/v1/api/iserver/auth/status', '_blank');
+        }
+
+        async function testProxyConnection() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="result info">测试代理服务器连接...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:3001/ibkr/auth/status', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                resultDiv.innerHTML = `
+                    <div class="result success">
+                        ✅ 代理服务器连接成功！<br>
+                        状态码: ${response.status}<br>
+                        状态文本: ${response.statusText}
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        ❌ 代理服务器连接失败<br>
+                        错误: ${error.message}<br><br>
+                        <strong>可能的原因：</strong><br>
+                        1. 代理服务器未运行 (node proxy-server.js)<br>
+                        2. IBKR Gateway未运行<br>
+                        3. SSL证书问题
+                    </div>
+                `;
+            }
+        }
+
+        async function testAuthStatus() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="result info">测试认证状态...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:3001/ibkr/auth/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            ✅ 认证状态测试成功！<br>
+                            认证: ${data.authenticated}<br>
+                            连接: ${data.connected}<br>
+                            服务器: ${data.serverInfo?.serverName || 'N/A'}<br>
+                            完整响应: ${JSON.stringify(data, null, 2)}
+                        </div>
+                    `;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            ❌ 认证状态测试失败<br>
+                            状态码: ${response.status}<br>
+                            错误信息: ${errorText}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        ❌ 连接错误: ${error.message}<br><br>
+                        <strong>解决方案：</strong><br>
+                        1. 确保IBKR Gateway正在运行<br>
+                        2. 点击上方链接接受SSL证书<br>
+                        3. 检查防火墙设置
+                    </div>
+                `;
+            }
+        }
+
+        async function testMarketData() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="result info">测试市场数据...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:3001/ibkr/marketdata/snapshot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        conids: [730283085] // MES DEC25
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            ✅ 市场数据测试成功！<br>
+                            数据: ${JSON.stringify(data, null, 2)}
+                        </div>
+                    `;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            ❌ 市场数据测试失败<br>
+                            状态码: ${response.status}<br>
+                            错误信息: ${errorText}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        ❌ 连接错误: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function checkIBKRStatus() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="result info">检查IBKR Gateway状态...</div>';
+            
+            try {
+                // 尝试直接访问IBKR Gateway
+                const response = await fetch('https://localhost:5000/v1/api/iserver/auth/status', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            ✅ IBKR Gateway直接访问成功！<br>
+                            认证: ${data.authenticated}<br>
+                            连接: ${data.connected}<br>
+                            服务器: ${data.serverInfo?.serverName || 'N/A'}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result warning">
+                            ⚠️ IBKR Gateway响应异常<br>
+                            状态码: ${response.status}<br>
+                            可能需要先接受SSL证书
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        ❌ 无法直接访问IBKR Gateway<br>
+                        错误: ${error.message}<br><br>
+                        <strong>请确保：</strong><br>
+                        1. IBKR Gateway正在运行<br>
+                        2. 已接受SSL证书<br>
+                        3. 端口5000未被占用
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html> 

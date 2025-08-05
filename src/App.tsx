@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Header } from './components/Header';
 import { PriceChart } from './components/PriceChart';
 import { TradingPanel } from './components/TradingPanel';
@@ -18,6 +18,9 @@ import { IBKRDiagnostic } from './components/IBKRDiagnostic';
 import { IBKRTest } from './components/IBKRTest';
 import { ContractConfig } from './components/ContractConfig';
 import { DynamicContractSearch } from './components/DynamicContractSearch';
+import { ContractSearchManager } from './components/ContractSearchManager';
+import { QuickAccessSidebar } from './components/QuickAccessSidebar';
+import { ContractDataViewer } from './components/ContractDataViewer';
 import { IBGatewayConfigCheck } from './components/IBGatewayConfigCheck';
 import { JavaCompatibleTest } from './components/JavaCompatibleTest';
 import { useRealTimeData } from './hooks/useRealTimeData';
@@ -35,6 +38,22 @@ function AppContent() {
     portfolioData,
     switchCrypto 
   } = useRealTimeData();
+
+  // 合约数据查看器状态
+  const [selectedContract, setSelectedContract] = useState<any>(null);
+  const [showContractViewer, setShowContractViewer] = useState(false);
+
+  // 处理合约选择
+  const handleContractSelect = (contract: any) => {
+    setSelectedContract(contract);
+    setShowContractViewer(true);
+  };
+
+  // 关闭合约查看器
+  const handleCloseContractViewer = () => {
+    setShowContractViewer(false);
+    setSelectedContract(null);
+  };
 
   if (!isLoaded) {
     return (
@@ -143,7 +162,12 @@ function AppContent() {
         </div>
       </div>
 
-                  {/* 动态期货合约搜索 */}
+                  {/* 合约搜索管理器 */}
+            <div className="container mx-auto px-6 py-4" data-component="contract-search-manager">
+              <ContractSearchManager />
+            </div>
+
+            {/* 动态期货合约搜索 */}
             <div className="container mx-auto px-6 py-4">
               <DynamicContractSearch />
             </div>
@@ -167,6 +191,16 @@ function AppContent() {
         <QuickIBKRTest />
         <PortTest />
       </div>
+
+      {/* 快速访问侧边栏 */}
+      <QuickAccessSidebar onContractSelect={handleContractSelect} />
+
+      {/* 合约数据查看器 */}
+      <ContractDataViewer
+        contract={selectedContract}
+        isVisible={showContractViewer}
+        onClose={handleCloseContractViewer}
+      />
     </div>
   );
 }

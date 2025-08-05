@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>简单IBKR测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success { background: #4CAF50; color: white; }
+        .error { background: #f44336; color: white; }
+        .info { background: #2196F3; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 简单IBKR连接测试</h1>
+        
+        <div class="info">
+            <strong>说明：</strong> 这个页面直接测试与IBKR Gateway的连接，不通过代理服务器。
+        </div>
+        
+        <button onclick="testDirectConnection()">直接测试IBKR Gateway</button>
+        <button onclick="testProxyConnection()">测试代理服务器</button>
+        <button onclick="acceptCertificate()">接受SSL证书</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function acceptCertificate() {
+            window.open('https://localhost:5000/v1/api/iserver/auth/status', '_blank');
+        }
+
+        async function testDirectConnection() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="result info">正在测试直接连接...</div>';
+            
+            try {
+                const response = await fetch('https://localhost:5000/v1/api/iserver/auth/status', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            ✅ 直接连接成功！<br>
+                            认证: ${data.authenticated}<br>
+                            连接: ${data.connected}<br>
+                            服务器: ${data.serverInfo?.serverName || 'N/A'}<br>
+                            完整响应: ${JSON.stringify(data, null, 2)}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            ❌ 直接连接失败<br>
+                            状态码: ${response.status}<br>
+                            状态文本: ${response.statusText}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        ❌ 连接错误: ${error.message}<br><br>
+                        <strong>解决方案：</strong><br>
+                        1. 点击"接受SSL证书"按钮<br>
+                        2. 在打开的页面中点击"高级" → "继续前往localhost:5000"<br>
+                        3. 返回此页面重新测试
+                    </div>
+                `;
+            }
+        }
+
+        async function testProxyConnection() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="result info">正在测试代理连接...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:3001/ibkr/auth/status', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            ✅ 代理连接成功！<br>
+                            数据: ${JSON.stringify(data, null, 2)}
+                        </div>
+                    `;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            ❌ 代理连接失败<br>
+                            状态码: ${response.status}<br>
+                            错误信息: ${errorText}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        ❌ 代理连接错误: ${error.message}<br><br>
+                        <strong>可能的原因：</strong><br>
+                        1. 代理服务器未运行<br>
+                        2. IBKR Gateway未运行<br>
+                        3. 网络连接问题
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html> 

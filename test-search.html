@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>合约搜索测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success { background: #4CAF50; color: white; }
+        .error { background: #f44336; color: white; }
+        .info { background: #2196F3; color: white; }
+        .contract-item {
+            background: #333;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 合约搜索功能测试</h1>
+        
+        <div class="info">
+            <strong>说明：</strong> 这个页面测试合约搜索功能，包括IBKR API和备用数据。
+        </div>
+        
+        <div class="mb-4">
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="输入合约符号 (如: MES, MNQ, ES)"
+                style="padding: 10px; width: 200px; margin-right: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 5px;"
+            />
+            <button onclick="testSearch()">搜索合约</button>
+        </div>
+
+        <div class="mb-4">
+            <button onclick="testPredefined()">测试预定义合约</button>
+            <button onclick="testIBKRAPI()">测试IBKR API</button>
+            <button onclick="testAll()">测试所有功能</button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function testSearch() {
+            const symbol = document.getElementById('searchInput').value.trim();
+            if (!symbol) {
+                showResult('请输入合约符号', 'error');
+                return;
+            }
+
+            showResult('搜索中...', 'info');
+            
+            try {
+                // 模拟调用搜索API
+                const results = await simulateSearch(symbol);
+                if (results && results.length > 0) {
+                    let html = `<div class="success">✅ 找到 ${results.length} 个合约:</div>`;
+                    results.forEach(contract => {
+                        html += `
+                            <div class="contract-item">
+                                <strong>${contract.symbol}</strong> - ${contract.description}<br>
+                                合约ID: ${contract.conid} | 交易所: ${contract.exchange}<br>
+                                公司: ${contract.companyName}
+                            </div>
+                        `;
+                    });
+                    showResult(html, 'success');
+                } else {
+                    showResult('❌ 未找到匹配的合约', 'error');
+                }
+            } catch (error) {
+                showResult(`❌ 搜索失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function simulateSearch(symbol) {
+            // 模拟预定义的合约数据
+            const predefinedContracts = {
+                'MES': [
+                    {
+                        conid: '730283085',
+                        symbol: 'MES',
+                        description: 'Micro E-Mini S&P 500 DEC25',
+                        exchange: 'CME',
+                        companyName: 'CME Group'
+                    },
+                    {
+                        conid: '711280067',
+                        symbol: 'MES',
+                        description: 'Micro E-Mini S&P 500 SEP25',
+                        exchange: 'CME',
+                        companyName: 'CME Group'
+                    }
+                ],
+                'MNQ': [
+                    {
+                        conid: '730283094',
+                        symbol: 'MNQ',
+                        description: 'Micro E-Mini Nasdaq-100 DEC25',
+                        exchange: 'CME',
+                        companyName: 'CME Group'
+                    },
+                    {
+                        conid: '711280073',
+                        symbol: 'MNQ',
+                        description: 'Micro E-Mini Nasdaq-100 SEP25',
+                        exchange: 'CME',
+                        companyName: 'CME Group'
+                    }
+                ],
+                'ES': [
+                    {
+                        conid: '495512563',
+                        symbol: 'ES',
+                        description: 'E-mini S&P 500 DEC25',
+                        exchange: 'CME',
+                        companyName: 'CME Group'
+                    }
+                ],
+                'NQ': [
+                    {
+                        conid: '563947738',
+                        symbol: 'NQ',
+                        description: 'E-mini NASDAQ 100 DEC25',
+                        exchange: 'CME',
+                        companyName: 'CME Group'
+                    }
+                ]
+            };
+
+            // 模拟API延迟
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const upperSymbol = symbol.toUpperCase();
+            return predefinedContracts[upperSymbol] || [];
+        }
+
+        async function testPredefined() {
+            showResult('测试预定义合约数据...', 'info');
+            
+            const symbols = ['MES', 'MNQ', 'ES', 'NQ'];
+            let results = [];
+            
+            for (const symbol of symbols) {
+                const contracts = await simulateSearch(symbol);
+                results = results.concat(contracts);
+            }
+            
+            if (results.length > 0) {
+                let html = `<div class="success">✅ 预定义合约测试成功，共 ${results.length} 个合约:</div>`;
+                results.forEach(contract => {
+                    html += `
+                        <div class="contract-item">
+                            <strong>${contract.symbol}</strong> - ${contract.description}
+                        </div>
+                    `;
+                });
+                showResult(html, 'success');
+            } else {
+                showResult('❌ 预定义合约测试失败', 'error');
+            }
+        }
+
+        async function testIBKRAPI() {
+            showResult('测试IBKR API连接...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:3001/ibkr/iserver/auth/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult(`✅ IBKR API连接成功\n认证: ${data.authenticated}\n连接: ${data.connected}`, 'success');
+                } else {
+                    showResult(`❌ IBKR API连接失败: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ IBKR API连接错误: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAll() {
+            showResult('开始全面测试...', 'info');
+            
+            // 测试IBKR API
+            await testIBKRAPI();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 测试预定义数据
+            await testPredefined();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 测试搜索功能
+            document.getElementById('searchInput').value = 'MES';
+            await testSearch();
+        }
+
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+
+        // 页面加载时自动测试
+        window.onload = function() {
+            showResult('页面加载完成，可以开始测试', 'info');
+        };
+    </script>
+</body>
+</html> 

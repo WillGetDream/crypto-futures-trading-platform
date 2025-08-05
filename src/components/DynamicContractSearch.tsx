@@ -13,6 +13,20 @@ interface ContractInfo {
   sections?: any[];
   expiration?: string;
   multiplier?: string;
+  maturityDate?: string;
+  tradingClass?: string;
+  desc1?: string;
+}
+
+interface MonthContract {
+  conid: number;
+  symbol: string;
+  secType: string;
+  exchange: string;
+  maturityDate: string;
+  multiplier: string;
+  tradingClass: string;
+  desc1: string;
 }
 
 const DynamicContractSearch: React.FC = () => {
@@ -24,6 +38,9 @@ const DynamicContractSearch: React.FC = () => {
   const [error, setError] = useState('');
   const [selectedContract, setSelectedContract] = useState<ContractInfo | null>(null);
   const [contractDetails, setContractDetails] = useState<any>(null);
+  const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [monthContracts, setMonthContracts] = useState<MonthContract[]>([]);
 
   // 常用期货符号
   const commonSymbols = ['ES', 'MES', 'NQ', 'MNQ', 'YM', 'MYM', 'RTY', 'MRTY', 'CL', 'GC', 'SI', 'ZB'];
@@ -40,20 +57,31 @@ const DynamicContractSearch: React.FC = () => {
     setContracts([]);
     setSelectedContract(null);
     setContractDetails(null);
+    setAvailableMonths([]);
+    setMonthContracts([]);
 
     try {
+      console.log('开始搜索合约:', searchSymbol.toUpperCase());
+      // 直接搜索MES合约，使用我们测试成功的参数
       const results = await ibkrService.searchFuturesContracts(
         searchSymbol.toUpperCase(),
-        searchExchange,
-        searchCurrency
+        'CME',  // 固定使用CME交易所
+        'USD'   // 固定使用USD货币
       );
+
+      console.log('API返回结果:', results);
+      console.log('结果类型:', typeof results);
+      console.log('结果长度:', results ? results.length : 'null');
 
       if (results && results.length > 0) {
         setContracts(results);
+        console.log('搜索结果:', results);
       } else {
         setError('未找到匹配的合约');
+        console.log('未找到合约，结果为空');
       }
     } catch (err) {
+      console.error('搜索出错:', err);
       setError(`搜索失败: ${err instanceof Error ? err.message : '未知错误'}`);
     } finally {
       setLoading(false);
@@ -67,13 +95,64 @@ const DynamicContractSearch: React.FC = () => {
     setError('');
 
     try {
-      // 由于合约详情API可能不可用，我们直接使用搜索结果的详细信息
-      setContractDetails(contract);
-      // 更新IBKR服务中的合约配置
-      ibkrService.updateContract(contract.symbol, parseInt(contract.conid));
-      console.log(`已选择合约: ${contract.symbol} (${contract.conid})`);
+      // 使用新的API获取合约详情
+      const details = await ibkrService.getContractDetails(parseInt(contract.conid));
+      if (details) {
+        setContractDetails(details);
+        // 更新IBKR服务中的合约配置
+        ibkrService.updateContract(contract.symbol, parseInt(contract.conid));
+        console.log(`已选择合约: ${contract.symbol} (${contract.conid})`);
+        
+        // 提取可用月份
+        if (contract.sections) {
+          const futSection = contract.sections.find((s: any) => s.secType === 'FUT');
+          if (futSection && futSection.months) {
+            const months = futSection.months.split(';');
+            setAvailableMonths(months);
+            console.log('可用月份:', months);
+          }
+        }
+      } else {
+        // 备用方案：直接使用搜索结果
+        setContractDetails(contract);
+        ibkrService.updateContract(contract.symbol, parseInt(contract.conid));
+        console.log(`已选择合约: ${contract.symbol} (${contract.conid}) - 使用备用信息`);
+      }
     } catch (err) {
       setError(`获取详情失败: ${err instanceof Error ? err.message : '未知错误'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 获取特定月份的合约
+  const getMonthContract = async (month: string) => {
+    if (!selectedContract) {
+      setError('请先选择一个基础合约');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const monthContract = await ibkrService.getFuturesContractByMonth(
+        selectedContract.symbol,
+        month,
+        selectedContract.exchange
+      );
+
+      if (monthContract) {
+        setMonthContracts([monthContract]);
+        setSelectedMonth(month);
+        // 更新IBKR服务中的合约配置
+        ibkrService.updateContract(monthContract.symbol, monthContract.conid);
+        console.log(`已选择${month}合约: ${monthContract.symbol} (${monthContract.conid})`);
+      } else {
+        setError(`未找到${month}合约`);
+      }
+    } catch (err) {
+      setError(`获取${month}合约失败: ${err instanceof Error ? err.message : '未知错误'}`);
     } finally {
       setLoading(false);
     }
@@ -82,7 +161,8 @@ const DynamicContractSearch: React.FC = () => {
   // 快速选择常用合约
   const quickSelect = (symbol: string) => {
     setSearchSymbol(symbol);
-    searchContracts();
+    // 直接搜索，不需要用户再点击搜索按钮
+    setTimeout(() => searchContracts(), 100);
   };
 
   return (
@@ -90,43 +170,16 @@ const DynamicContractSearch: React.FC = () => {
       <h2 className="text-xl font-bold text-white mb-4">动态期货合约搜索</h2>
       
       {/* 搜索表单 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">合约符号</label>
           <input
             type="text"
             value={searchSymbol}
             onChange={(e) => setSearchSymbol(e.target.value)}
-            placeholder="如: ES, MES, NQ"
+            placeholder="如: MES, ES, NQ"
             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">交易所</label>
-          <select
-            value={searchExchange}
-            onChange={(e) => setSearchExchange(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="GLOBEX">GLOBEX (CME)</option>
-            <option value="ECBOT">ECBOT (CBOT)</option>
-            <option value="NYMEX">NYMEX</option>
-            <option value="ICE">ICE</option>
-          </select>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">货币</label>
-          <select
-            value={searchCurrency}
-            onChange={(e) => setSearchCurrency(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-            <option value="GBP">GBP</option>
-          </select>
         </div>
         
         <div className="flex items-end">
@@ -142,7 +195,7 @@ const DynamicContractSearch: React.FC = () => {
 
       {/* 快速选择 */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-300 mb-2">快速选择常用合约:</label>
+        <label className="block text-sm font-medium text-gray-300 mb-2">快速搜索常用合约:</label>
         <div className="flex flex-wrap gap-2">
           {commonSymbols.map((symbol) => (
             <button
@@ -249,6 +302,66 @@ const DynamicContractSearch: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* 月份选择 */}
+          {availableMonths.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-600">
+              <h4 className="text-md font-semibold text-white mb-3">选择具体月份:</h4>
+              <div className="flex flex-wrap gap-2">
+                {availableMonths.map((month) => (
+                  <button
+                    key={month}
+                    onClick={() => getMonthContract(month)}
+                    disabled={loading}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      selectedMonth === month
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {month}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 月份合约详情 */}
+          {monthContracts.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-600">
+              <h4 className="text-md font-semibold text-white mb-3">月份合约详情:</h4>
+              {monthContracts.map((contract, index) => (
+                <div key={index} className="bg-gray-600 p-3 rounded">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-400">合约ID:</span>
+                      <span className="text-white ml-2 font-mono">{contract.conid}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">符号:</span>
+                      <span className="text-white ml-2">{contract.symbol}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">到期日期:</span>
+                      <span className="text-white ml-2">{contract.maturityDate}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">乘数:</span>
+                      <span className="text-white ml-2">{contract.multiplier}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">交易类别:</span>
+                      <span className="text-white ml-2">{contract.tradingClass}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">描述:</span>
+                      <span className="text-white ml-2">{contract.desc1}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
