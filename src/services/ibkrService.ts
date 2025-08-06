@@ -354,31 +354,47 @@ export class IBKRService {
       
       // 尝试多个TWS API端点
       const endpoints = [
-        // 主要端点 - IB Gateway
+        // Java TWS API端点（主要）
+        `http://localhost:8080/api/tws/contracts/search`,
+        // 备用端点 - IB Gateway
         `http://localhost:3001/ibkr/iserver/secdef/search?symbol=${symbol}&exchange=${exchange}&currency=${currency}&secType=FUT`,
-        // TWS端点
-        `http://localhost:3001/tws/iserver/secdef/search?symbol=${symbol}&exchange=${exchange}&currency=${currency}&secType=FUT`,
-        // 直接连接IB Gateway
-        `https://localhost:5000/v1/api/iserver/secdef/search?symbol=${symbol}&exchange=${exchange}&currency=${currency}&secType=FUT`,
-        // 直接连接TWS
-        `https://localhost:4002/v1/api/iserver/secdef/search?symbol=${symbol}&exchange=${exchange}&currency=${currency}&secType=FUT`
+        // 备用端点 - TWS
+        `http://localhost:3001/tws/iserver/secdef/search?symbol=${symbol}&exchange=${exchange}&currency=${currency}&secType=FUT`
       ];
 
-      for (const url of endpoints) {
+      for (let url of endpoints) {
         try {
           console.log(`尝试端点: ${url}`);
           
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
           
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'User-Agent': 'IBKR-Client/1.0'
-            },
+          // 根据URL选择请求方法
+          const isJavaApi = url.includes('localhost:8080');
+          const method = isJavaApi ? 'POST' : 'GET';
+          const headers = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'IBKR-Client/1.0'
+          };
+          
+          let requestOptions: any = {
+            method,
+            headers,
             signal: controller.signal
-          });
+          };
+          
+          // 如果是Java API，需要URL参数
+          if (isJavaApi) {
+            const params = new URLSearchParams({
+              symbol,
+              secType: 'FUT',
+              exchange,
+              currency
+            });
+            url = `${url}?${params.toString()}`;
+          }
+          
+          const response = await fetch(url, requestOptions);
 
           clearTimeout(timeoutId);
           console.log(`端点 ${url} 响应状态:`, response.status);

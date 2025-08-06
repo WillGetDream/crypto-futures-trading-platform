@@ -19,6 +19,7 @@ app.use('/ibkr', createProxyMiddleware({
   // 添加更多SSL配置
   agent: false,
   rejectUnauthorized: false,
+  logLevel: 'debug', // 添加调试日志
   onProxyReq: (proxyReq, req, res) => {
     console.log('代理请求:', req.method, req.url);
     // 设置请求头防止重定向
@@ -71,6 +72,7 @@ app.use('/tws', createProxyMiddleware({
   // 添加更多SSL配置
   agent: false,
   rejectUnauthorized: false,
+  logLevel: 'debug', // 添加调试日志
   onProxyReq: (proxyReq, req, res) => {
     console.log('TWS代理请求:', req.method, req.url);
     // 设置请求头防止重定向

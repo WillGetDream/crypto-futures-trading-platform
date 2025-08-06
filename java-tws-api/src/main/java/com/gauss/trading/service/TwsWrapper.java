@@ -50,8 +50,20 @@ public class TwsWrapper extends DefaultEWrapper {
             // 存储合约详情
             contractDetailsMap.put(reqId, contractDetails);
             
+            // 转换为可序列化的Map
+            Map<String, Object> contractMap = Map.of(
+                "conId", contractDetails.contract().conid(),
+                "symbol", contractDetails.contract().symbol(),
+                "secType", contractDetails.contract().secType(),
+                "exchange", contractDetails.contract().exchange(),
+                "currency", contractDetails.contract().currency(),
+                "multiplier", contractDetails.contract().multiplier(),
+                "tradingClass", contractDetails.contract().tradingClass(),
+                "description", contractDetails.contract().description()
+            );
+            
             // 转换为JSON
-            String json = objectMapper.writeValueAsString(contractDetails);
+            String json = objectMapper.writeValueAsString(contractMap);
             
             // 完成请求
             connectionService.completePendingRequest(reqId, json);
