@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TWS API连接测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .endpoint {
+            background-color: #3d3d3d;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.success {
+            background-color: #28a745;
+            color: white;
+        }
+        .status.error {
+            background-color: #dc3545;
+            color: white;
+        }
+        .status.warning {
+            background-color: #ffc107;
+            color: black;
+        }
+        .test-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background-color: #0056b3;
+        }
+        .log {
+            background-color: #1a1a1a;
+            border: 1px solid #555;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .search-section {
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            background-color: #3d3d3d;
+            border: 1px solid #555;
+            border-radius: 5px;
+            color: white;
+            margin-bottom: 10px;
+        }
+        .search-button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .search-button:hover {
+            background-color: #1e7e34;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 TWS API连接测试</h1>
+            <p>测试TWS API连接状态和合约搜索功能</p>
+        </div>
+
+        <div class="test-section">
+            <h2>🌐 连接状态测试</h2>
+            <button onclick="testAllEndpoints()" class="test-button">测试所有端点</button>
+            <button onclick="clearLog()" class="test-button">清除日志</button>
+            
+            <div id="endpoints"></div>
+            
+            <div class="log" id="log"></div>
+        </div>
+
+        <div class="search-section">
+            <h2>🔍 合约搜索测试</h2>
+            <input type="text" id="searchInput" class="search-input" placeholder="输入合约符号 (如: MES, MNQ, ES, NQ)" value="MES">
+            <button onclick="searchContracts()" class="search-button">搜索合约</button>
+            
+            <div id="searchResults"></div>
+        </div>
+    </div>
+
+    <script>
+        const endpoints = [
+            {
+                name: '代理服务器 - IB Gateway',
+                url: 'http://localhost:3001/ibkr/iserver/auth/status',
+                description: '通过代理服务器连接IB Gateway'
+            },
+            {
+                name: '代理服务器 - TWS',
+                url: 'http://localhost:3001/tws/iserver/auth/status',
+                description: '通过代理服务器连接TWS'
+            },
+            {
+                name: '直接连接 - IB Gateway',
+                url: 'https://localhost:5000/v1/api/iserver/auth/status',
+                description: '直接连接IB Gateway (端口5000)'
+            },
+            {
+                name: '直接连接 - TWS',
+                url: 'https://localhost:4002/v1/api/iserver/auth/status',
+                description: '直接连接TWS (端口4002)'
+            }
+        ];
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function testEndpoint(endpoint) {
+            const endpointDiv = document.getElementById(`endpoint-${endpoint.name.replace(/\s+/g, '-')}`);
+            const statusDiv = endpointDiv.querySelector('.status');
+            
+            statusDiv.textContent = '测试中...';
+            statusDiv.className = 'status warning';
+            
+            log(`🔍 测试端点: ${endpoint.name}`);
+            log(`   URL: ${endpoint.url}`);
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(endpoint.url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'IBKR-Client/1.0'
+                    },
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ ${endpoint.name} 连接成功`);
+                    log(`   响应: ${JSON.stringify(data).substring(0, 200)}...`);
+                    
+                    statusDiv.textContent = '连接成功';
+                    statusDiv.className = 'status success';
+                } else {
+                    log(`❌ ${endpoint.name} 连接失败: ${response.status} ${response.statusText}`);
+                    
+                    statusDiv.textContent = '连接失败';
+                    statusDiv.className = 'status error';
+                }
+            } catch (error) {
+                log(`❌ ${endpoint.name} 请求失败: ${error.message}`);
+                
+                statusDiv.textContent = '请求失败';
+                statusDiv.className = 'status error';
+            }
+        }
+
+        async function testAllEndpoints() {
+            log('🚀 开始测试所有TWS API端点...');
+            
+            for (const endpoint of endpoints) {
+                await testEndpoint(endpoint);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // 延迟1秒
+            }
+            
+            log('✅ 所有端点测试完成');
+        }
+
+        async function searchContracts() {
+            const symbol = document.getElementById('searchInput').value.toUpperCase();
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (!symbol) {
+                alert('请输入合约符号');
+                return;
+            }
+            
+            log(`🔍 开始搜索合约: ${symbol}`);
+            resultsDiv.innerHTML = '<p>搜索中...</p>';
+            
+            const searchEndpoints = [
+                `http://localhost:3001/ibkr/iserver/secdef/search?symbol=${symbol}&exchange=CME&currency=USD&secType=FUT`,
+                `http://localhost:3001/tws/iserver/secdef/search?symbol=${symbol}&exchange=CME&currency=USD&secType=FUT`,
+                `https://localhost:5000/v1/api/iserver/secdef/search?symbol=${symbol}&exchange=CME&currency=USD&secType=FUT`,
+                `https://localhost:4002/v1/api/iserver/secdef/search?symbol=${symbol}&exchange=CME&currency=USD&secType=FUT`
+            ];
+            
+            for (const url of searchEndpoints) {
+                try {
+                    log(`尝试搜索端点: ${url}`);
+                    
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000);
+                    
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'IBKR-Client/1.0'
+                        },
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        log(`✅ 搜索成功: ${url}`);
+                        log(`   返回数据: ${JSON.stringify(data).substring(0, 500)}...`);
+                        
+                        if (data && Array.isArray(data) && data.length > 0) {
+                            resultsDiv.innerHTML = `
+                                <h3>✅ 搜索成功 - 找到 ${data.length} 个合约</h3>
+                                <div style="max-height: 400px; overflow-y: auto;">
+                                    ${data.map(contract => `
+                                        <div style="background: #3d3d3d; padding: 10px; margin: 5px 0; border-radius: 5px;">
+                                            <strong>${contract.symbol}</strong> - ${contract.description || contract.companyHeader}<br>
+                                            <small>合约ID: ${contract.conid} | 交易所: ${contract.exchange}</small>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `;
+                        } else {
+                            resultsDiv.innerHTML = '<p>⚠️ 搜索成功但未找到合约</p>';
+                        }
+                        return; // 成功找到数据，停止尝试其他端点
+                    } else {
+                        log(`❌ 搜索失败: ${response.status} ${response.statusText}`);
+                    }
+                } catch (error) {
+                    log(`❌ 搜索请求失败: ${error.message}`);
+                }
+            }
+            
+            resultsDiv.innerHTML = '<p>❌ 所有搜索端点都失败</p>';
+        }
+
+        // 页面加载时初始化端点列表
+        window.onload = function() {
+            const endpointsDiv = document.getElementById('endpoints');
+            endpoints.forEach(endpoint => {
+                const endpointDiv = document.createElement('div');
+                endpointDiv.className = 'endpoint';
+                endpointDiv.id = `endpoint-${endpoint.name.replace(/\s+/g, '-')}`;
+                endpointDiv.innerHTML = `
+                    <h3>${endpoint.name}</h3>
+                    <p>${endpoint.description}</p>
+                    <span class="status">未测试</span>
+                `;
+                endpointsDiv.appendChild(endpointDiv);
+            });
+            
+            log('🚀 TWS API连接测试页面已加载');
+            log('💡 点击"测试所有端点"开始连接测试');
+        };
+    </script>
+</body>
+</html> 

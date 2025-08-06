@@ -267,14 +267,10 @@ export class IBKRService {
   // 搜索期货合约 - 使用正确的IBKR API流程 + 数据库
   async searchFuturesContracts(symbol: string, exchange: string = 'CME', currency: string = 'USD'): Promise<any[]> {
     try {
-      console.log(`开始搜索期货合约: ${symbol} 在 ${exchange}`);
+      console.log(`🔍 开始TWS API搜索期货合约: ${symbol} 在 ${exchange}`);
       
-      // 首先检查数据库是否有缓存数据
-      const cachedContracts = ContractDatabase.getContracts(symbol);
-      if (cachedContracts.length > 0) {
-        console.log(`从数据库获取到 ${cachedContracts.length} 个 ${symbol} 合约`);
-        return cachedContracts;
-      }
+      // 强制使用TWS API搜索，不检查缓存
+      console.log('🎯 强制使用TWS API搜索，跳过缓存检查');
       
       // 步骤1: 使用 secdef/search 搜索基础合约获取所有月份
       const baseContracts = await this.searchBaseContracts(symbol, exchange, currency);
@@ -339,8 +335,8 @@ export class IBKRService {
         }
       }
       
-      // 如果IBKR API失败，使用预定义的合约数据
-      console.log('IBKR API无结果，使用预定义合约数据');
+      // 如果TWS API失败，使用预定义的合约数据作为备用
+      console.log('❌ TWS API无结果，使用预定义合约数据作为备用');
       const predefinedContracts = this.getPredefinedContracts(symbol);
       
       // 将预定义数据转换为ContractData格式并保存到数据库
@@ -360,6 +356,7 @@ export class IBKRService {
       
       ContractDatabase.saveContracts(symbol, contractDataArray);
       
+      console.log('⚠️ 注意：当前显示的是预定义数据，不是TWS API实时搜索结果');
       return predefinedContracts;
       
     } catch (error) {

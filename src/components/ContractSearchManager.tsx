@@ -214,11 +214,16 @@ export const ContractSearchManager: React.FC = () => {
               setSearchQuery('');
               setHasSearched(false);
               localStorage.removeItem('searchManagerInitialized');
+              // 清除合约数据库缓存
+              if (window.confirm('确定要清除所有缓存数据吗？这将强制下次搜索使用TWS API获取最新数据。')) {
+                localStorage.removeItem('contractDatabase');
+                console.log('✅ 已清除合约数据库缓存');
+              }
             }}
             className="px-3 py-1 bg-gray-600 text-gray-300 rounded text-sm hover:bg-gray-500"
-            title="清除搜索历史"
+            title="清除搜索历史和缓存"
           >
-            清除
+            清除缓存
           </button>
           <button
             onClick={() => {
