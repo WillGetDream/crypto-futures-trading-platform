@@ -10,14 +10,8 @@ import { CryptoSelector } from './components/CryptoSelector';
 import { FuturesTrading } from './components/FuturesTrading';
 import { ClerkAuth } from './components/ClerkAuth';
 import { TempAuth } from './components/TempAuth';
-import { IBKRTestPanel } from './components/IBKRTestPanel';
-import { SimpleIBKRTest } from './components/SimpleIBKRTest';
-import { QuickIBKRTest } from './components/QuickIBKRTest';
-import { PortTest } from './components/PortTest';
 import { IBKRDiagnostic } from './components/IBKRDiagnostic';
-import { IBKRTest } from './components/IBKRTest';
 import { ContractConfig } from './components/ContractConfig';
-import { DynamicContractSearch } from './components/DynamicContractSearch';
 import { ContractSearchManager } from './components/ContractSearchManager';
 import { QuickAccessSidebar } from './components/QuickAccessSidebar';
 import { ContractDataViewer } from './components/ContractDataViewer';
@@ -168,10 +162,7 @@ function AppContent() {
               <ContractSearchManager />
             </div>
 
-            {/* 动态期货合约搜索 */}
-            <div className="container mx-auto px-6 py-4">
-              <DynamicContractSearch />
-            </div>
+
 
             {/* 期货合约配置 */}
             <div className="container mx-auto px-6 py-4">
@@ -186,19 +177,10 @@ function AppContent() {
         </div>
       </div>
 
-      {/* IBKR实时数据测试 */}
-      <div className="container mx-auto px-6 py-4">
-        <IBKRTest />
-      </div>
-      
       {/* 其他IBKR功能保留但隐藏测试界面 */}
       <div style={{ display: 'none' }}>
         <IBGatewayConfigCheck />
         <JavaCompatibleTest />
-        <IBKRTestPanel />
-        <SimpleIBKRTest />
-        <QuickIBKRTest />
-        <PortTest />
       </div>
 
       {/* 快速访问侧边栏 */}

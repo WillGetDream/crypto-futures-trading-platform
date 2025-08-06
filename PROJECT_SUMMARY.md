@@ -12,6 +12,7 @@
 - **订单历史**: 完整的订单跟踪和管理
 - **价格提醒**: 自定义价格警报
 - **TWS API测试组件**: 集成Java后端API测试界面
+- **IBKR连接诊断**: 诊断IBKR连接状态
 
 #### 后端功能 (Java + Spring Boot)
 - **Java TWS API集成**: 完整的Interactive Brokers API集成
