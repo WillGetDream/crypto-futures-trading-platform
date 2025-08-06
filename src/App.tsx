@@ -31,7 +31,8 @@ function AppContent() {
     selectedCrypto, 
     priceHistory,
     portfolioData,
-    switchCrypto 
+    switchCrypto,
+    allInstruments
   } = useRealTimeData();
 
   // 合约数据查看器状态
@@ -82,6 +83,7 @@ function AppContent() {
             <CryptoSelector 
               selectedInstrument={selectedCrypto}
               onInstrumentChange={switchCrypto}
+              allInstruments={allInstruments}
             />
             <div className="flex items-center space-x-4">
               <div>

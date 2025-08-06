@@ -140,7 +140,13 @@ export const ContractSearchManager: React.FC = () => {
     ibkrService.updateContract(contract.symbol, parseInt(contract.conid));
     ibkrService.configureContract(contract.conid);
     
+    // 触发合约更新事件，通知其他组件
+    window.dispatchEvent(new CustomEvent('contractsUpdated'));
+    
     console.log(`已配置合约: ${contract.symbol} (${contract.conid})`);
+    
+    // 显示成功消息
+    alert(`✅ 合约 ${contract.symbol} 配置成功！\n\n现在您可以在上方的交易界面中选择这个合约进行交易。\n\n合约ID: ${contract.conid}\n交易所: ${contract.exchange}\n描述: ${contract.description || contract.companyHeader}`);
   };
 
   // 移除配置的合约

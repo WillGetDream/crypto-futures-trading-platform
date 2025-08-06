@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MES合约搜索测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .search-section {
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            background-color: #3d3d3d;
+            border: 1px solid #555;
+            border-radius: 5px;
+            color: white;
+            margin-bottom: 10px;
+        }
+        .search-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .search-button:hover {
+            background-color: #0056b3;
+        }
+        .results {
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .contract-item {
+            background-color: #3d3d3d;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .configure-button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            float: right;
+        }
+        .configure-button:hover {
+            background-color: #1e7e34;
+        }
+        .status {
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .success {
+            color: #28a745;
+        }
+        .info {
+            color: #17a2b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 MES合约搜索和配置测试</h1>
+            <p>测试TWS API合约搜索功能，配置后可在交易界面中使用</p>
+        </div>
+
+        <div class="search-section">
+            <h2>📊 合约搜索</h2>
+            <input type="text" id="searchInput" class="search-input" placeholder="输入合约符号 (如: MES, MNQ, ES, NQ)" value="MES">
+            <button onclick="searchContracts()" class="search-button">搜索合约</button>
+        </div>
+
+        <div class="results" id="results" style="display: none;">
+            <h2>🔍 搜索结果</h2>
+            <div id="contractList"></div>
+        </div>
+
+        <div class="status">
+            <h2>📈 配置状态</h2>
+            <div id="statusInfo">
+                <p class="info">💡 使用说明：</p>
+                <ol>
+                    <li>在搜索框中输入 "MES" 并点击搜索</li>
+                    <li>从搜索结果中选择合适的MES合约</li>
+                    <li>点击"配置"按钮将合约添加到配置中</li>
+                    <li>配置成功后，合约将出现在上方交易界面的选择器中</li>
+                    <li>在交易界面中选择该合约即可查看价格图表</li>
+                </ol>
+                <p class="success">✅ 已配置的合约将显示在"🎯 TWS API 已配置合约"分组中</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟TWS API搜索结果
+        const mockMESContracts = [
+            {
+                conid: "730283085",
+                symbol: "MES",
+                companyHeader: "Micro E-Mini S&P 500 DEC25",
+                companyName: "CME Group",
+                exchange: "CME",
+                currency: "USD",
+                description: "Micro E-Mini S&P 500 DEC25 (乘数: 5)"
+            },
+            {
+                conid: "711280067",
+                symbol: "MES",
+                companyHeader: "Micro E-Mini S&P 500 SEP25",
+                companyName: "CME Group",
+                exchange: "CME",
+                currency: "USD",
+                description: "Micro E-Mini S&P 500 SEP25 (乘数: 5)"
+            },
+            {
+                conid: "750150186",
+                symbol: "MES",
+                companyHeader: "Micro E-Mini S&P 500 MAR26",
+                companyName: "CME Group",
+                exchange: "CME",
+                currency: "USD",
+                description: "Micro E-Mini S&P 500 MAR26 (乘数: 5)"
+            }
+        ];
+
+        function searchContracts() {
+            const searchTerm = document.getElementById('searchInput').value.toUpperCase();
+            const resultsDiv = document.getElementById('results');
+            const contractList = document.getElementById('contractList');
+
+            if (searchTerm === 'MES') {
+                resultsDiv.style.display = 'block';
+                contractList.innerHTML = '';
+
+                mockMESContracts.forEach(contract => {
+                    const contractDiv = document.createElement('div');
+                    contractDiv.className = 'contract-item';
+                    contractDiv.innerHTML = `
+                        <h3>${contract.symbol} - ${contract.companyHeader}</h3>
+                        <p><strong>合约ID:</strong> ${contract.conid}</p>
+                        <p><strong>交易所:</strong> ${contract.exchange}</p>
+                        <p><strong>货币:</strong> ${contract.currency}</p>
+                        <p><strong>描述:</strong> ${contract.description}</p>
+                        <button onclick="configureContract('${contract.symbol}', '${contract.conid}', '${contract.description}')" class="configure-button">
+                            配置合约
+                        </button>
+                    `;
+                    contractList.appendChild(contractDiv);
+                });
+            } else {
+                alert('请输入 "MES" 来搜索Micro E-Mini S&P 500合约');
+            }
+        }
+
+        function configureContract(symbol, conid, description) {
+            // 获取已配置的合约
+            let configuredContracts = JSON.parse(localStorage.getItem('configuredContracts') || '[]');
+            
+            // 检查是否已经配置过
+            const exists = configuredContracts.find(c => c.symbol === symbol);
+            if (exists) {
+                alert(`合约 ${symbol} 已经配置过了！`);
+                return;
+            }
+
+            // 添加新合约到配置
+            const newContract = {
+                symbol: symbol,
+                conid: conid,
+                description: description,
+                exchange: 'CME',
+                type: 'futures',
+                icon: '📈',
+                color: 'bg-blue-500',
+                lastPrice: Math.random() * 1000 + 5000,
+                change: (Math.random() - 0.5) * 10
+            };
+
+            configuredContracts.push(newContract);
+            localStorage.setItem('configuredContracts', JSON.stringify(configuredContracts));
+
+            // 触发更新事件
+            window.dispatchEvent(new CustomEvent('contractsUpdated'));
+
+            alert(`✅ 合约 ${symbol} 配置成功！\n\n现在您可以在上方的交易界面中选择这个合约进行交易。\n\n合约ID: ${conid}\n描述: ${description}`);
+        }
+
+        // 页面加载时自动搜索MES
+        window.onload = function() {
+            searchContracts();
+        };
+    </script>
+</body>
+</html> 

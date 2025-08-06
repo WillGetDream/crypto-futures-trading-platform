@@ -94,6 +94,39 @@ export const TRADING_INSTRUMENTS: TradingInstrument[] = [
   }
 ];
 
+// 获取所有可用的交易工具（包括已配置的合约）
+export const getAllTradingInstruments = (): TradingInstrument[] => {
+  const baseInstruments = [...TRADING_INSTRUMENTS];
+  
+  // 从localStorage获取已配置的合约
+  try {
+    const configuredContracts = localStorage.getItem('configuredContracts');
+    if (configuredContracts) {
+      const contracts = JSON.parse(configuredContracts);
+      contracts.forEach((contract: any) => {
+        // 检查是否已经存在
+        const exists = baseInstruments.find(i => i.symbol === contract.symbol);
+        if (!exists) {
+          baseInstruments.push({
+            id: contract.symbol.toLowerCase(),
+            symbol: contract.symbol,
+            name: contract.description || contract.symbol,
+            type: 'futures',
+            category: 'configured',
+            tickSize: 0.25,
+            contractSize: 5,
+            currency: 'USD'
+          });
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error loading configured contracts:', error);
+  }
+  
+  return baseInstruments;
+};
+
 // 向后兼容的类型别名
 export type CryptoOption = TradingInstrument;
 export const CRYPTO_OPTIONS = TRADING_INSTRUMENTS;
@@ -264,6 +297,51 @@ const fetchInstrumentPrice = async (instrument: TradingInstrument) => {
   if (instrument.type === 'crypto') {
     return await fetchCryptoPrice(instrument.id);
   } else if (instrument.type === 'futures') {
+    // 如果是TWS API配置的合约，使用特殊的处理逻辑
+    if (instrument.category === 'configured') {
+      // 从localStorage获取合约信息
+      try {
+        const configuredContracts = localStorage.getItem('configuredContracts');
+        if (configuredContracts) {
+          const contracts = JSON.parse(configuredContracts);
+          const contract = contracts.find((c: any) => c.symbol === instrument.symbol);
+          if (contract) {
+            // 使用TWS API获取真实数据，如果失败则使用模拟数据
+            try {
+              // 这里可以调用TWS API获取真实数据
+              // 暂时使用模拟数据
+              const basePrice = {
+                'MES': 6261,
+                'MNQ': 18500,
+                'ES': 6261,
+                'NQ': 18500,
+                'YM': 38500,
+                'MYM': 38500,
+                'RTY': 2100,
+                'MRTY': 2100
+              }[instrument.symbol] || 5000;
+              
+              const randomChange = (Math.random() - 0.5) * 0.01;
+              const currentPrice = basePrice * (1 + randomChange);
+              const change24h = (Math.random() - 0.5) * 2;
+              const volume = Math.random() * 1000000 + 500000;
+              
+              return {
+                usd: currentPrice,
+                usd_24h_change: change24h,
+                usd_24h_vol: volume
+              };
+            } catch (error) {
+              console.log('TWS API获取数据失败，使用模拟数据:', error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('获取配置合约信息失败:', error);
+      }
+    }
+    
+    // 默认期货合约处理
     return await fetchFuturesPrice(instrument.id);
   }
   return null;
@@ -276,6 +354,30 @@ export const useRealTimeData = () => {
   const [volume24h, setVolume24h] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [priceHistory, setPriceHistory] = useState<PriceData[]>([]);
+  const [allInstruments, setAllInstruments] = useState<TradingInstrument[]>([]);
+
+  // 动态获取所有交易工具
+  const updateInstruments = useCallback(() => {
+    const instruments = getAllTradingInstruments();
+    setAllInstruments(instruments);
+  }, []);
+
+  // 初始化时获取交易工具列表
+  useEffect(() => {
+    updateInstruments();
+  }, [updateInstruments]);
+
+  // 监听合约更新事件
+  useEffect(() => {
+    const handleContractsUpdated = () => {
+      updateInstruments();
+    };
+
+    window.addEventListener('contractsUpdated', handleContractsUpdated);
+    return () => {
+      window.removeEventListener('contractsUpdated', handleContractsUpdated);
+    };
+  }, [updateInstruments]);
 
   const [portfolioData, setPortfolioData] = useState<PortfolioData[]>([
     {
@@ -412,6 +514,7 @@ export const useRealTimeData = () => {
     selectedCrypto,
     priceHistory,
     portfolioData,
-    switchCrypto
+    switchCrypto,
+    allInstruments
   };
 };
