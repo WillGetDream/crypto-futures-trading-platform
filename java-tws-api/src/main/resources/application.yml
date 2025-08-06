@@ -1,0 +1,41 @@
+# Spring Boot 配置文件
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# 日志配置
+logging:
+  level:
+    com.gauss.trading: DEBUG
+    com.ib.client: INFO
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# TWS配置
+tws:
+  host: localhost
+  port: 4002
+  client-id: 0
+  connection-timeout: 10000
+  message-timeout: 30000
+
+# Spring Boot Actuator配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# 应用信息
+spring:
+  application:
+    name: TWS API
+  jackson:
+    default-property-inclusion: NON_NULL
+    serialization:
+      write-dates-as-timestamps: false 

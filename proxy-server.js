@@ -54,13 +54,66 @@ app.use('/ibkr', createProxyMiddleware({
     }
   },
   onError: (err, req, res) => {
-    console.error('代理错误:', err);
-    res.status(500).json({ error: '代理请求失败' });
+    console.error('IBKR代理错误:', err);
+    res.status(500).json({ error: 'IBKR代理请求失败' });
+  }
+}));
+
+// 代理到TWS (新增TWS支持)
+app.use('/tws', createProxyMiddleware({
+  target: 'https://localhost:4002', // TWS端口4002
+  changeOrigin: true,
+  secure: false, // 忽略SSL证书验证
+  followRedirects: false, // 不跟随重定向
+  pathRewrite: {
+    '^/tws': '/v1/api/iserver'
+  },
+  // 添加更多SSL配置
+  agent: false,
+  rejectUnauthorized: false,
+  onProxyReq: (proxyReq, req, res) => {
+    console.log('TWS代理请求:', req.method, req.url);
+    // 设置请求头防止重定向
+    proxyReq.setHeader('Host', 'localhost:4002');
+    proxyReq.setHeader('Referer', 'https://localhost:4002');
+    proxyReq.setHeader('Origin', 'https://localhost:4002');
+    proxyReq.setHeader('User-Agent', 'TWS-Client/1.0');
+  },
+  onProxyRes: (proxyRes, req, res) => {
+    console.log('TWS代理响应:', proxyRes.statusCode);
+    // 强制阻止所有重定向
+    if (proxyRes.headers.location) {
+      console.log('检测到TWS重定向:', proxyRes.headers.location);
+      delete proxyRes.headers.location;
+      // 返回错误响应而不是重定向
+      res.status(200).json({ 
+        error: 'TWS重定向被阻止', 
+        originalLocation: proxyRes.headers.location,
+        message: 'TWS尝试重定向到外部服务器，已阻止'
+      });
+      return;
+    }
+    
+    // 如果是302重定向状态码，阻止重定向
+    if (proxyRes.statusCode === 302) {
+      console.log('阻止TWS 302重定向');
+      res.status(200).json({ 
+        error: 'TWS重定向被阻止', 
+        statusCode: proxyRes.statusCode,
+        message: 'TWS尝试重定向，已阻止'
+      });
+      return;
+    }
+  },
+  onError: (err, req, res) => {
+    console.error('TWS代理错误:', err);
+    res.status(500).json({ error: 'TWS代理请求失败' });
   }
 }));
 
 const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`代理服务器运行在 http://localhost:${PORT}`);
-  console.log('代理路径: /ibkr -> https://localhost:5000/v1/api/iserver');
+  console.log('IBKR代理路径: /ibkr -> https://localhost:5000/v1/api/iserver');
+  console.log('TWS代理路径: /tws -> https://localhost:4002/v1/api/iserver');
 }); 

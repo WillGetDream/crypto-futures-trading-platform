@@ -40,3 +40,64 @@ coverage/
 
 # Vercel
 .vercel
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+*.iml
+*.ipr
+*.iws
+.settings/
+.project
+.classpath
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# IBJts API (large binary files)
+src/IBJts/source/JavaClient/TwsApi.jar
+src/IBJts/source/JavaClient/TwsApi_debug.jar
+src/IBJts/samples/Java/ApiDemo.jar
+src/IBJts/samples/Java/TestJavaClient/TestJavaClient.jar
+
+# Compiled C++ files
+src/IBJts/source/cppclient/client/*.o
+src/IBJts/source/cppclient/client/*.a
+src/IBJts/source/cppclient/client/*.so
+src/IBJts/source/cppclient/client/*.dylib
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/

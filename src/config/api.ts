@@ -1,5 +1,21 @@
 // API配置文件
 export const API_CONFIG = {
+  // Java TWS API后端
+  TWS_API: {
+    BASE_URL: 'http://localhost:8080/api/tws',
+    ENDPOINTS: {
+      HEALTH: '/health',
+      STATUS: '/status',
+      CONNECT: '/connect',
+      DISCONNECT: '/disconnect',
+      ACCOUNT_SUMMARY: '/account/summary',
+      ACCOUNT_POSITIONS: '/account/positions',
+      CONTRACTS_SEARCH: '/contracts/search',
+      MARKET_DATA_REQUEST: '/market-data/request',
+      MARKET_DATA_CANCEL: '/market-data/cancel'
+    }
+  },
+  
   // Alpha Vantage API - 免费版每天500次请求
   // 注册地址: https://www.alphavantage.co/support/#api-key
   ALPHA_VANTAGE: {

@@ -23,6 +23,7 @@ import { QuickAccessSidebar } from './components/QuickAccessSidebar';
 import { ContractDataViewer } from './components/ContractDataViewer';
 import { IBGatewayConfigCheck } from './components/IBGatewayConfigCheck';
 import { JavaCompatibleTest } from './components/JavaCompatibleTest';
+import TwsApiTest from './components/TwsApiTest';
 import { useRealTimeData } from './hooks/useRealTimeData';
 import { useUser } from '@clerk/clerk-react';
 
@@ -176,6 +177,14 @@ function AppContent() {
             <div className="container mx-auto px-6 py-4">
               <ContractConfig />
             </div>
+
+      {/* TWS API测试 */}
+      <div className="container mx-auto px-6 py-4">
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-white mb-4">Java TWS API 测试</h2>
+          <TwsApiTest />
+        </div>
+      </div>
 
       {/* IBKR实时数据测试 */}
       <div className="container mx-auto px-6 py-4">
