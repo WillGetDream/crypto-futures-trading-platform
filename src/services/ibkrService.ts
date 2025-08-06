@@ -403,7 +403,18 @@ export class IBKRService {
             const data = await response.json();
             console.log(`TWS API返回数据:`, data);
             
-            if (data && Array.isArray(data) && data.length > 0) {
+            // 处理Java TWS API的响应格式
+            if (isJavaApi && data && data.success && data.data) {
+              try {
+                // Java API返回的data是JSON字符串，需要解析
+                const contractData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+                console.log(`Java TWS API解析后的合约数据:`, contractData);
+                return [contractData];
+              } catch (parseError) {
+                console.warn(`解析Java TWS API数据失败:`, parseError);
+                return [];
+              }
+            } else if (data && Array.isArray(data) && data.length > 0) {
               console.log(`成功从TWS API获取到 ${data.length} 个基础合约`);
               return data;
             } else if (data && typeof data === 'object') {
