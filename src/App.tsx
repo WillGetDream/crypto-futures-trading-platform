@@ -10,7 +10,7 @@ import { CryptoSelector } from './components/CryptoSelector';
 import { FuturesTrading } from './components/FuturesTrading';
 import { ClerkAuth } from './components/ClerkAuth';
 import { TempAuth } from './components/TempAuth';
-import { IBKRDiagnostic } from './components/IBKRDiagnostic';
+
 import { ContractConfig } from './components/ContractConfig';
 import { ContractSearchManager } from './components/ContractSearchManager';
 import { QuickAccessSidebar } from './components/QuickAccessSidebar';
@@ -149,13 +149,7 @@ function AppContent() {
         <OrderHistory />
       </div>
       
-      {/* IBKR诊断工具 */}
-      <div className="container mx-auto px-6 py-4">
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-white mb-4">IBKR连接诊断</h2>
-          <IBKRDiagnostic />
-        </div>
-      </div>
+
 
                   {/* 合约搜索管理器 */}
             <div className="container mx-auto px-6 py-4" data-component="contract-search-manager">
