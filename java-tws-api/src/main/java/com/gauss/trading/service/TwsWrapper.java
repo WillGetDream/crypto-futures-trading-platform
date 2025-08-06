@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashSet;
+import java.util.HashMap;
 
 /**
  * TWS包装器
@@ -50,17 +51,16 @@ public class TwsWrapper extends DefaultEWrapper {
             // 存储合约详情
             contractDetailsMap.put(reqId, contractDetails);
             
-            // 转换为可序列化的Map
-            Map<String, Object> contractMap = Map.of(
-                "conId", contractDetails.contract().conid(),
-                "symbol", contractDetails.contract().symbol(),
-                "secType", contractDetails.contract().secType(),
-                "exchange", contractDetails.contract().exchange(),
-                "currency", contractDetails.contract().currency(),
-                "multiplier", contractDetails.contract().multiplier(),
-                "tradingClass", contractDetails.contract().tradingClass(),
-                "description", contractDetails.contract().description()
-            );
+            // 转换为可序列化的Map，处理null值
+            Map<String, Object> contractMap = new HashMap<>();
+            contractMap.put("conId", contractDetails.contract().conid());
+            contractMap.put("symbol", contractDetails.contract().symbol() != null ? contractDetails.contract().symbol() : "");
+            contractMap.put("secType", contractDetails.contract().secType() != null ? contractDetails.contract().secType() : "");
+            contractMap.put("exchange", contractDetails.contract().exchange() != null ? contractDetails.contract().exchange() : "");
+            contractMap.put("currency", contractDetails.contract().currency() != null ? contractDetails.contract().currency() : "");
+            contractMap.put("multiplier", contractDetails.contract().multiplier() != null ? contractDetails.contract().multiplier() : "");
+            contractMap.put("tradingClass", contractDetails.contract().tradingClass() != null ? contractDetails.contract().tradingClass() : "");
+            contractMap.put("description", contractDetails.contract().description() != null ? contractDetails.contract().description() : "");
             
             // 转换为JSON
             String json = objectMapper.writeValueAsString(contractMap);
