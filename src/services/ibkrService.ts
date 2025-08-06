@@ -1,6 +1,5 @@
 // IBKR API服务
 // 注意：IBKR需要TWS或IB Gateway运行，并且需要配置API访问
-import { ContractDatabase, ContractData } from './contractDatabase';
 
 export interface IBKRConfig {
   host: string;
@@ -235,28 +234,33 @@ export class IBKRService {
     this.config.contracts[symbol] = conid;
     console.log(`更新合约配置: ${symbol} = ${conid}`);
     
-    // 同时保存到数据库
-    ContractDatabase.configureContract(conid.toString());
+    // 不再保存到数据库
+    console.log('🎯 合约配置已更新，不保存到数据库');
   }
 
-  // 配置合约到数据库
+  // 配置合约（不再使用数据库）
   configureContract(conid: string): void {
-    ContractDatabase.configureContract(conid);
+    console.log(`🎯 配置合约: ${conid}（不保存到数据库）`);
   }
 
-  // 从数据库获取已配置的合约
+  // 获取已配置的合约（返回空对象）
   getConfiguredContracts(): { [conid: string]: any } {
-    return ContractDatabase.getConfiguredContracts();
+    return {};
   }
 
-  // 从数据库获取合约详情
+  // 获取合约详情（返回null）
   getContractFromDatabase(conid: string): any {
-    return ContractDatabase.getContractDetails(conid);
+    return null;
   }
 
-  // 获取数据库统计信息
+  // 获取统计信息（返回空统计）
   getDatabaseStats(): any {
-    return ContractDatabase.getDatabaseStats();
+    return {
+      totalContracts: 0,
+      configuredContracts: 0,
+      searchHistoryCount: 0,
+      lastUpdated: new Date().toISOString()
+    };
   }
 
   // 获取当前合约配置
@@ -279,13 +283,13 @@ export class IBKRService {
         console.log(`找到 ${baseContracts.length} 个基础合约`);
         
         // 步骤2: 获取每个合约的详细信息
-        const detailedContracts: ContractData[] = [];
+        const detailedContracts: any[] = [];
         for (const baseContract of baseContracts) {
           try {
             const details = await this.getContractDetails(parseInt(baseContract.conid));
             if (details) {
-              // 转换为ContractData格式
-              const contractData: ContractData = {
+              // 使用基础合约信息，添加详情
+              const contractData = {
                 conid: baseContract.conid,
                 symbol: baseContract.symbol,
                 secType: baseContract.secType || 'FUT',
@@ -299,16 +303,14 @@ export class IBKRService {
                 multiplier: details.multiplier,
                 maturityDate: details.maturityDate,
                 tradingClass: details.tradingClass,
-                desc1: details.desc1,
-                lastUpdated: new Date().toISOString(),
-                isConfigured: false
+                desc1: details.desc1
               };
               detailedContracts.push(contractData);
             }
           } catch (err) {
             console.warn(`获取合约 ${baseContract.conid} 详情失败:`, err);
             // 如果获取详情失败，使用基础信息
-            const contractData: ContractData = {
+            const contractData = {
               conid: baseContract.conid,
               symbol: baseContract.symbol,
               secType: baseContract.secType || 'FUT',
@@ -317,52 +319,31 @@ export class IBKRService {
               description: baseContract.description,
               companyHeader: baseContract.companyHeader,
               companyName: baseContract.companyName,
-              sections: baseContract.sections,
-              lastUpdated: new Date().toISOString(),
-              isConfigured: false
+              sections: baseContract.sections
             };
             detailedContracts.push(contractData);
           }
         }
         
         if (detailedContracts.length > 0) {
-          console.log(`成功获取 ${detailedContracts.length} 个合约的详细信息`);
+          console.log(`✅ TWS API成功获取 ${detailedContracts.length} 个合约的详细信息`);
           
-          // 保存到数据库
-          ContractDatabase.saveContracts(symbol, detailedContracts);
+          // 不保存到数据库，直接返回实时数据
+          console.log('🎯 直接返回TWS API实时数据，不保存缓存');
           
           return detailedContracts;
         }
       }
       
-      // 如果TWS API失败，使用预定义的合约数据作为备用
-      console.log('❌ TWS API无结果，使用预定义合约数据作为备用');
-      const predefinedContracts = this.getPredefinedContracts(symbol);
-      
-      // 将预定义数据转换为ContractData格式并保存到数据库
-      const contractDataArray: ContractData[] = predefinedContracts.map(contract => ({
-        conid: contract.conid,
-        symbol: contract.symbol,
-        secType: contract.secType,
-        exchange: contract.exchange,
-        currency: contract.currency,
-        description: contract.description,
-        companyHeader: contract.companyHeader,
-        companyName: contract.companyName,
-        sections: contract.sections,
-        lastUpdated: new Date().toISOString(),
-        isConfigured: false
-      }));
-      
-      ContractDatabase.saveContracts(symbol, contractDataArray);
-      
-      console.log('⚠️ 注意：当前显示的是预定义数据，不是TWS API实时搜索结果');
-      return predefinedContracts;
+      // 如果TWS API失败，返回空数组
+      console.log('❌ TWS API无结果，返回空数组');
+      console.log('⚠️ 注意：TWS API搜索失败，请检查连接状态');
+      return [];
       
     } catch (error) {
-      console.error(`搜索期货合约失败 (${symbol}):`, error);
-      // 使用预定义的合约数据作为备用
-      return this.getPredefinedContracts(symbol);
+      console.error(`❌ TWS API搜索期货合约失败 (${symbol}):`, error);
+      console.log('⚠️ 注意：TWS API搜索完全失败，返回空数组');
+      return [];
     }
   }
 
