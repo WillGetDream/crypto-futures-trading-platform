@@ -369,41 +369,65 @@ export class IBKRService {
     }
   }
 
-  // 搜索基础合约 - 使用正确的 secdef/search 端点
+  // 搜索基础合约 - 使用真正的TWS API
   private async searchBaseContracts(symbol: string, exchange: string, currency: string): Promise<any[]> {
     try {
-      console.log(`使用 secdef/search 搜索 ${symbol} 合约`);
+      console.log(`使用TWS API搜索 ${symbol} 合约`);
       
-      // 使用 GET /iserver/secdef/search 端点
-      const url = `http://localhost:3001/ibkr/iserver/secdef/search?symbol=${symbol}&exchange=${exchange}&currency=${currency}&secType=FUT`;
-      
-      console.log('搜索URL:', url);
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
+      // 尝试多个TWS API端点
+      const endpoints = [
+        // 主要端点 - IB Gateway
+        `http://localhost:3001/ibkr/iserver/secdef/search?symbol=${symbol}&exchange=${exchange}&currency=${currency}&secType=FUT`,
+        // TWS端点
+        `http://localhost:3001/tws/iserver/secdef/search?symbol=${symbol}&exchange=${exchange}&currency=${currency}&secType=FUT`,
+        // 直接连接IB Gateway
+        `https://localhost:5000/v1/api/iserver/secdef/search?symbol=${symbol}&exchange=${exchange}&currency=${currency}&secType=FUT`,
+        // 直接连接TWS
+        `https://localhost:4002/v1/api/iserver/secdef/search?symbol=${symbol}&exchange=${exchange}&currency=${currency}&secType=FUT`
+      ];
 
-      console.log('secdef/search 响应状态:', response.status);
+      for (const url of endpoints) {
+        try {
+          console.log(`尝试端点: ${url}`);
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+          
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': 'IBKR-Client/1.0'
+            },
+            signal: controller.signal
+          });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`secdef/search 返回数据:`, data);
-        
-        if (data && Array.isArray(data) && data.length > 0) {
-          console.log(`成功获取到 ${data.length} 个基础合约`);
-          return data;
+          clearTimeout(timeoutId);
+          console.log(`端点 ${url} 响应状态:`, response.status);
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`TWS API返回数据:`, data);
+            
+            if (data && Array.isArray(data) && data.length > 0) {
+              console.log(`成功从TWS API获取到 ${data.length} 个基础合约`);
+              return data;
+            } else if (data && typeof data === 'object') {
+              // 处理单个合约的情况
+              console.log(`TWS API返回单个合约:`, data);
+              return [data];
+            }
+          } else {
+            console.warn(`端点 ${url} 返回错误: ${response.status} ${response.statusText}`);
+          }
+        } catch (error) {
+          console.warn(`端点 ${url} 请求失败:`, error);
+          continue; // 尝试下一个端点
         }
-      } else {
-        console.warn(`secdef/search 返回错误: ${response.status} ${response.statusText}`);
       }
       
-      // 如果secdef/search失败，尝试直接获取合约信息
-      console.log('secdef/search失败，尝试直接获取合约信息');
-      return await this.getContractInfoDirectly(symbol, exchange);
-      
+      console.log('所有TWS API端点都失败，尝试备用方法');
+      return [];
     } catch (error) {
       console.error('搜索基础合约失败:', error);
       return [];

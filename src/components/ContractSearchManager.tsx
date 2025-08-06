@@ -94,7 +94,9 @@ export const ContractSearchManager: React.FC = () => {
     setHasSearched(true);
 
     try {
-      console.log('搜索合约:', searchTerm.toUpperCase());
+      console.log('🔍 开始TWS API合约搜索:', searchTerm.toUpperCase());
+      setError('正在连接TWS API...');
+      
       const results = await ibkrService.searchFuturesContracts(
         searchTerm.toUpperCase(),
         'CME',
@@ -103,15 +105,18 @@ export const ContractSearchManager: React.FC = () => {
 
       if (results && results.length > 0) {
         setSearchResults(results);
-        console.log('搜索结果:', results);
-        // 清除错误信息
-        setError('');
+        console.log('✅ TWS API搜索结果:', results);
+        setError(''); // 清除错误信息
+        
+        // 显示成功消息
+        const successMsg = `✅ 成功从TWS API获取到 ${results.length} 个 ${searchTerm.toUpperCase()} 合约`;
+        console.log(successMsg);
       } else {
-        setError(`未找到匹配的合约 "${searchTerm}"。请尝试其他符号如: MES, MNQ, ES, NQ`);
+        setError(`❌ TWS API未找到匹配的合约 "${searchTerm}"。\n\n请确保：\n1. TWS或IB Gateway正在运行\n2. API连接已启用\n3. 尝试其他符号如: MES, MNQ, ES, NQ`);
       }
     } catch (err) {
-      console.error('搜索出错:', err);
-      setError(`搜索失败: ${err instanceof Error ? err.message : '未知错误'}`);
+      console.error('❌ TWS API搜索出错:', err);
+      setError(`❌ TWS API搜索失败: ${err instanceof Error ? err.message : '未知错误'}\n\n请检查TWS连接状态`);
     } finally {
       setIsSearching(false);
     }
@@ -146,7 +151,7 @@ export const ContractSearchManager: React.FC = () => {
     console.log(`已配置合约: ${contract.symbol} (${contract.conid})`);
     
     // 显示成功消息
-    alert(`✅ 合约 ${contract.symbol} 配置成功！\n\n现在您可以在上方的交易界面中选择这个合约进行交易。\n\n合约ID: ${contract.conid}\n交易所: ${contract.exchange}\n描述: ${contract.description || contract.companyHeader}`);
+    alert(`🎯 TWS API合约配置成功！\n\n✅ 合约 ${contract.symbol} 已添加到交易界面\n\n📊 合约详情:\n• 合约ID: ${contract.conid}\n• 交易所: ${contract.exchange}\n• 描述: ${contract.description || contract.companyHeader}\n\n🚀 现在您可以在上方交易界面的"🎯 TWS API 已配置合约"分组中选择此合约进行交易！`);
   };
 
   // 移除配置的合约
@@ -248,7 +253,7 @@ export const ContractSearchManager: React.FC = () => {
             disabled={isSearching}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSearching ? '搜索中...' : '搜索'}
+            {isSearching ? '🔍 TWS API搜索中...' : '🔍 TWS API搜索'}
           </button>
         </div>
 
@@ -337,7 +342,7 @@ export const ContractSearchManager: React.FC = () => {
         <div className="mb-6">
           <h3 className="text-lg font-semibold text-white mb-3 flex items-center">
             <TrendingUp className="mr-2" size={20} />
-            搜索结果 ({searchResults.length})
+            🎯 TWS API搜索结果 ({searchResults.length})
           </h3>
           <div className="grid gap-3">
             {searchResults.map((contract, index) => (
@@ -367,7 +372,7 @@ export const ContractSearchManager: React.FC = () => {
                       className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center space-x-1"
                     >
                       <Settings size={16} />
-                      <span>配置</span>
+                      <span>🎯 配置TWS合约</span>
                     </button>
                   </div>
                 </div>
