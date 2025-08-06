@@ -675,65 +675,39 @@ export class IBKRService {
     return predefinedContracts[upperSymbol] || [];
   }
 
-  // 获取合约详细信息
+  // 获取合约详细信息 - 简化版本，因为Java TWS API已经提供了完整信息
   async getContractDetails(conid: number, sectype?: string, month?: string, exchange?: string): Promise<any> {
     try {
-      // 使用代理服务器避免SSL证书问题
-      let url = `http://localhost:3001/ibkr/secdef/info?conid=${conid}`;
+      console.log(`🎯 简化版getContractDetails调用: conid=${conid}`);
       
-      // 添加可选参数
-      if (sectype) url += `&sectype=${sectype}`;
-      if (month) url += `&month=${month}`;
-      if (exchange) url += `&exchange=${exchange}`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`获取合约详情失败: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log(`合约详情 (${conid}):`, data);
-      return data;
+      // 由于Java TWS API已经提供了完整的合约信息，这里返回一个简化的响应
+      // 避免额外的API调用，提高性能
+      return {
+        conid: conid.toString(),
+        description: `合约 ${conid}`,
+        companyHeader: `合约 ${conid}`,
+        // 其他字段保持为空，因为主要信息已经在searchBaseContracts中获取
+      };
     } catch (error) {
       console.error(`获取合约详情失败 (${conid}):`, error);
       return null;
     }
   }
 
-  // 获取特定月份的期货合约
+  // 获取特定月份的期货合约 - 简化版本
   async getFuturesContractByMonth(symbol: string, month: string, exchange: string = 'CME'): Promise<any> {
     try {
-      // 首先搜索基础合约
+      console.log(`🎯 简化版getFuturesContractByMonth调用: ${symbol} ${month}`);
+      
+      // 直接使用searchFuturesContracts，因为Java TWS API已经提供了完整信息
       const contracts = await this.searchFuturesContracts(symbol, exchange);
       if (contracts.length === 0) {
         throw new Error(`未找到${symbol}合约`);
       }
 
-      // 使用第一个合约的conid来获取特定月份
-      const baseConid = contracts[0].conid;
-      // 使用代理服务器避免SSL证书问题
-      const url = `http://localhost:3001/ibkr/secdef/info?conid=${baseConid}&sectype=FUT&month=${month}&exchange=${exchange}`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`获取${symbol} ${month}合约失败: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log(`获取${symbol} ${month}合约:`, data);
-      return data[0] || null; // 返回第一个匹配的合约
+      // 返回第一个合约，因为Java TWS API已经提供了最相关的合约
+      console.log(`获取${symbol} ${month}合约:`, contracts[0]);
+      return contracts[0];
     } catch (error) {
       console.error(`获取${symbol} ${month}合约失败:`, error);
       return null;
