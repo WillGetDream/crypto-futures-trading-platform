@@ -34,7 +34,14 @@ function AppContent() {
     priceHistory,
     portfolioData,
     switchCrypto,
-    allInstruments
+    allInstruments,
+    // TWS相关数据
+    twsConnected,
+    twsMarketData,
+    bidPrice,
+    askPrice,
+    bidSize,
+    askSize
   } = useRealTimeData();
 
   // 合约数据查看器状态
@@ -190,6 +197,12 @@ function AppContent() {
                 selectedInstrument={selectedCrypto}
                 priceChange24h={priceChange24h}
                 volume24h={volume24h}
+                twsConnected={twsConnected}
+                twsMarketData={twsMarketData}
+                bidPrice={bidPrice}
+                askPrice={askPrice}
+                bidSize={bidSize}
+                askSize={askSize}
               />
             ) : (
               <ProfessionalChart

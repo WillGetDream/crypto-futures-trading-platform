@@ -45,9 +45,10 @@ export interface TradingInstrument {
   // 添加TWS API相关字段
   tradingClass?: string;
   multiplier?: string;
+  conId?: string; // TWS合约ID
 }
 
-// 支持的交易品种列表
+  // 支持的交易品种列表
 export const TRADING_INSTRUMENTS: TradingInstrument[] = [
   // 加密货币
   { id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', type: 'crypto' },
@@ -59,45 +60,51 @@ export const TRADING_INSTRUMENTS: TradingInstrument[] = [
   { id: 'dogecoin', symbol: 'DOGE', name: 'Dogecoin', type: 'crypto' },
   { id: 'polkadot', symbol: 'DOT', name: 'Polkadot', type: 'crypto' },
   
-  // 期货合约
+  // 真实TWS期货合约 - 使用当前活跃的合约
   { 
-    id: 'mes', 
+    id: 'mes-202509', 
     symbol: 'MES', 
-    name: 'E-mini S&P 500', 
+    name: 'Micro E-mini S&P 500', 
     type: 'futures', 
     category: 'equity_index',
     tickSize: 0.25,
     contractSize: 5,
     currency: 'USD',
-    expiration: '2023-12-22',
-    contractMonth: '2023-12',
-    lastTradingDay: '2023-12-21',
-    maturityDate: '2024-03-22'
+    expiration: '2025-09-19',
+    contractMonth: '202509',
+    lastTradingDay: '2025-09-19',
+    maturityDate: '2025-09-19',
+    tradingClass: 'MES',
+    multiplier: '5',
+    conId: '711280067' // 真实TWS合约ID
   },
   { 
-    id: 'mnq', 
+    id: 'mnq-202509', 
     symbol: 'MNQ', 
-    name: 'E-mini NASDAQ-100', 
+    name: 'Micro E-mini NASDAQ-100', 
     type: 'futures', 
     category: 'equity_index',
     tickSize: 0.25,
     contractSize: 2,
     currency: 'USD',
-    expiration: '2023-12-22',
-    contractMonth: '2023-12',
-    lastTradingDay: '2023-12-21',
-    maturityDate: '2024-03-22'
+    expiration: '2025-09-19',
+    contractMonth: '202509',
+    lastTradingDay: '2025-09-19',
+    maturityDate: '2025-09-19',
+    tradingClass: 'MNQ',
+    multiplier: '2',
+    conId: '711280068' // 示例合约ID
   },
   { 
-    id: 'mym', 
+    id: 'mym-202509', 
     symbol: 'MYM', 
-    name: 'E-mini Dow Jones', 
+    name: 'Micro E-mini Dow Jones', 
     type: 'futures', 
     category: 'equity_index',
     tickSize: 1.0,
     contractSize: 0.5,
     currency: 'USD',
-    expiration: '2023-12-22',
+    expiration: '2025-09-19',
     contractMonth: '2023-12',
     lastTradingDay: '2023-12-21',
     maturityDate: '2024-03-22'
@@ -380,6 +387,11 @@ export const useRealTimeData = () => {
   const [priceHistory, setPriceHistory] = useState<PriceData[]>([]);
   const [allInstruments, setAllInstruments] = useState<TradingInstrument[]>([]);
   const [twsMarketData, setTwsMarketData] = useState<any>(null);
+  const [twsConnected, setTwsConnected] = useState<boolean>(false);
+  const [bidPrice, setBidPrice] = useState<number>(0);
+  const [askPrice, setAskPrice] = useState<number>(0);
+  const [bidSize, setBidSize] = useState<number>(0);
+  const [askSize, setAskSize] = useState<number>(0);
 
   // 动态获取所有交易工具
   const updateInstruments = useCallback(() => {
@@ -436,6 +448,20 @@ export const useRealTimeData = () => {
           });
         }
         
+        // 更新买卖盘数据
+        if (marketData.bid && marketData.bid > 0) {
+          setBidPrice(marketData.bid);
+        }
+        if (marketData.ask && marketData.ask > 0) {
+          setAskPrice(marketData.ask);
+        }
+        if (marketData.bidSize) {
+          setBidSize(marketData.bidSize);
+        }
+        if (marketData.askSize) {
+          setAskSize(marketData.askSize);
+        }
+        
         // 更新成交量
         if (marketData.volume) {
           setVolume24h(marketData.volume);
@@ -446,6 +472,95 @@ export const useRealTimeData = () => {
     window.addEventListener('marketDataUpdated', handleMarketDataUpdated as EventListener);
     return () => {
       window.removeEventListener('marketDataUpdated', handleMarketDataUpdated as EventListener);
+    };
+  }, [selectedCrypto.symbol]);
+
+  // WebSocket连接和TWS状态检查
+  useEffect(() => {
+    const connectWebSocket = () => {
+      try {
+        const ws = new WebSocket('ws://localhost:8080/ws/market-data');
+        
+        ws.onopen = () => {
+          console.log('WebSocket连接已建立');
+          setTwsConnected(true);
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'marketData' && data.symbol === selectedCrypto.symbol) {
+              const marketData = data.data;
+              
+              // 更新价格
+              if (marketData.lastPrice && marketData.lastPrice > 0) {
+                setCurrentPrice(marketData.lastPrice);
+              }
+              
+              // 更新买卖盘
+              if (marketData.bid && marketData.bid > 0) {
+                setBidPrice(marketData.bid);
+              }
+              if (marketData.ask && marketData.ask > 0) {
+                setAskPrice(marketData.ask);
+              }
+              if (marketData.bidSize) {
+                setBidSize(marketData.bidSize);
+              }
+              if (marketData.askSize) {
+                setAskSize(marketData.askSize);
+              }
+              
+              // 更新成交量
+              if (marketData.volume) {
+                setVolume24h(marketData.volume);
+              }
+              
+              // 添加到价格历史
+              const newPriceData: PriceData = {
+                time: new Date().toLocaleTimeString('zh-CN', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  second: '2-digit'
+                }),
+                price: marketData.lastPrice,
+                volume: marketData.volume || 0
+              };
+              
+              setPriceHistory(prev => {
+                const updated = [...prev, newPriceData];
+                return updated.slice(-50);
+              });
+            }
+          } catch (error) {
+            console.error('解析WebSocket消息失败:', error);
+          }
+        };
+        
+        ws.onclose = () => {
+          console.log('WebSocket连接已关闭');
+          setTwsConnected(false);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('WebSocket连接错误:', error);
+          setTwsConnected(false);
+        };
+        
+        return ws;
+      } catch (error) {
+        console.error('创建WebSocket连接失败:', error);
+        setTwsConnected(false);
+        return null;
+      }
+    };
+
+    const ws = connectWebSocket();
+    
+    return () => {
+      if (ws) {
+        ws.close();
+      }
     };
   }, [selectedCrypto.symbol]);
 
@@ -638,6 +753,13 @@ export const useRealTimeData = () => {
     priceHistory,
     portfolioData,
     switchCrypto,
-    allInstruments
+    allInstruments,
+    // TWS相关数据
+    twsConnected,
+    twsMarketData,
+    bidPrice,
+    askPrice,
+    bidSize,
+    askSize
   };
 };

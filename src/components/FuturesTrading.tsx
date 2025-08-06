@@ -1,19 +1,33 @@
 import React, { useState } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, BarChart3, Clock, AlertTriangle } from 'lucide-react';
 import { TradingInstrument } from '../hooks/useRealTimeData';
+import { TradingViewChart } from './TradingViewChart';
 
 interface FuturesTradingProps {
   currentPrice: number;
   selectedInstrument: TradingInstrument;
   priceChange24h: number;
   volume24h: number;
+  // TWS相关数据
+  twsConnected?: boolean;
+  twsMarketData?: any;
+  bidPrice?: number;
+  askPrice?: number;
+  bidSize?: number;
+  askSize?: number;
 }
 
 export const FuturesTrading: React.FC<FuturesTradingProps> = ({
   currentPrice,
   selectedInstrument,
   priceChange24h,
-  volume24h
+  volume24h,
+  twsConnected = false,
+  twsMarketData,
+  bidPrice = 0,
+  askPrice = 0,
+  bidSize = 0,
+  askSize = 0
 }) => {
   const [showExpiryInfo, setShowExpiryInfo] = useState(false);
   
@@ -123,6 +137,36 @@ export const FuturesTrading: React.FC<FuturesTradingProps> = ({
           </div>
         </div>
         
+        {/* TWS实时数据 */}
+        {twsConnected && (
+          <div className="mt-4 pt-4 border-t border-gray-600">
+            <div className="text-sm text-gray-400 mb-2 flex items-center">
+              <div className={`w-2 h-2 rounded-full mr-2 ${twsConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              TWS实时数据
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              <div>
+                <div className="text-gray-400">买价</div>
+                <div className="text-green-400 font-medium">${bidPrice.toFixed(2)}</div>
+                <div className="text-xs text-gray-500">数量: {bidSize}</div>
+              </div>
+              <div>
+                <div className="text-gray-400">卖价</div>
+                <div className="text-red-400 font-medium">${askPrice.toFixed(2)}</div>
+                <div className="text-xs text-gray-500">数量: {askSize}</div>
+              </div>
+              <div>
+                <div className="text-gray-400">成交量</div>
+                <div className="text-white font-medium">{volume24h.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-gray-400">价差</div>
+                <div className="text-white font-medium">${(askPrice - bidPrice).toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* 添加期货到期日期信息 */}
         {(selectedInstrument.expiration || selectedInstrument.contractMonth || selectedInstrument.lastTradingDay || selectedInstrument.maturityDate) && (
           <div className="mt-4 pt-4 border-t border-gray-600">
@@ -172,146 +216,22 @@ export const FuturesTrading: React.FC<FuturesTradingProps> = ({
         )}
       </div>
 
-      {/* 专业期货价格图表 */}
+      {/* TradingView专业图表 */}
       <div className="bg-gray-900 rounded-lg p-4 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-lg font-semibold text-white">价格走势图</h4>
+          <h4 className="text-lg font-semibold text-white">TradingView专业图表</h4>
           <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-xs text-green-400">实时数据</span>
-          </div>
-        </div>
-        
-        <div className="h-48 relative">
-          <svg className="w-full h-full" viewBox="0 0 600 200">
-            <defs>
-              <linearGradient id="futuresGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3"/>
-                <stop offset="100%" stopColor="#3B82F6" stopOpacity="0"/>
-              </linearGradient>
-            </defs>
-            
-            {/* 主要网格线 */}
-            {priceTicks.map((tick, index) => (
-              <line
-                key={`grid-${index}`}
-                x1="0"
-                y1={tick.y}
-                x2="100%"
-                y2={tick.y}
-                stroke="#374151"
-                strokeWidth="1"
-                opacity="0.4"
-              />
-            ))}
-            
-            {/* 垂直网格线 */}
-            {timeTicks.map((tick, index) => (
-              <line
-                key={`vgrid-${index}`}
-                x1={tick.x}
-                y1="0"
-                x2={tick.x}
-                y2="100%"
-                stroke="#374151"
-                strokeWidth="1"
-                opacity="0.2"
-              />
-            ))}
-            
-            {/* 价格刻度标签 */}
-            {priceTicks.map((tick, index) => (
-              <text
-                key={`price-${index}`}
-                x="5"
-                y={tick.y + 4}
-                fill="#9CA3AF"
-                fontSize="9"
-                fontFamily="monospace"
-                textAnchor="start"
-              >
-                ${tick.price.toFixed(2)}
-              </text>
-            ))}
-            
-            {/* 时间刻度标签 */}
-            {timeTicks.map((tick, index) => (
-              <text
-                key={`time-${index}`}
-                x={tick.x}
-                y="195"
-                fill="#9CA3AF"
-                fontSize="9"
-                fontFamily="monospace"
-                textAnchor="middle"
-              >
-                {tick.time}
-              </text>
-            ))}
-            
-            {/* 价格曲线 */}
-            {priceHistory.length > 1 && (
-              <>
-                <path
-                  d={`M ${priceHistory.map((point, index) => {
-                    const x = (index / Math.max(1, priceHistory.length - 1)) * 600;
-                    const y = ((highPrice - point.price) / priceRange) * 200;
-                    return `${x},${y}`;
-                  }).join(' L ')} L 600,200 L 0,200 Z`}
-                  fill="url(#futuresGradient)"
-                />
-                <polyline
-                  fill="none"
-                  stroke="#3B82F6"
-                  strokeWidth="2"
-                  points={priceHistory.map((point, index) => {
-                    const x = (index / Math.max(1, priceHistory.length - 1)) * 600;
-                    const y = ((highPrice - point.price) / priceRange) * 200;
-                    return `${x},${y}`;
-                  }).join(' ')}
-                />
-              </>
-            )}
-            
-            {/* 当前价格点 */}
-            <circle
-              cx={600}
-              cy={((highPrice - currentPrice) / priceRange) * 200}
-              r="3"
-              fill="#3B82F6"
-              className="animate-pulse"
-            />
-            
-            {/* 坐标轴 */}
-            <line x1="0" y1="0" x2="0" y2="200" stroke="#6B7280" strokeWidth="1" />
-            <line x1="0" y1="200" x2="600" y2="200" stroke="#6B7280" strokeWidth="1" />
-          </svg>
-          
-          {/* 图表标题 */}
-          <div className="absolute top-2 left-2 text-xs text-gray-400 font-medium">
-            {selectedInstrument.symbol} - 期货价格走势
-          </div>
-          
-          {/* 当前价格标签 */}
-          <div className="absolute top-2 right-2 text-xs text-gray-400">
-            <span className="font-medium">当前: </span>
-            <span className="font-bold text-blue-400">
-              ${currentPrice.toFixed(2)}
+            <div className={`w-2 h-2 rounded-full ${twsConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+            <span className={`text-xs ${twsConnected ? 'text-green-400' : 'text-red-400'}`}>
+              {twsConnected ? 'TWS实时数据' : 'TWS未连接'}
             </span>
           </div>
         </div>
         
-        {/* 图表信息栏 */}
-        <div className="mt-2 flex justify-between items-center text-xs text-gray-400">
-          <div className="flex space-x-4">
-            <span>数据源: TWS API</span>
-            <span>合约: {selectedInstrument.symbol}</span>
-          </div>
-          <div className="flex space-x-4">
-            <span>最高: ${highPrice.toFixed(2)}</span>
-            <span>最低: ${lowPrice.toFixed(2)}</span>
-          </div>
-        </div>
+        <TradingViewChart 
+          symbol={selectedInstrument.symbol}
+          className="h-96"
+        />
       </div>
 
       {/* 交易统计 */}
