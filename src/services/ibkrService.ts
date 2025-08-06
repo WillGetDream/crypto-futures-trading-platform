@@ -421,7 +421,15 @@ export class IBKRService {
                   companyHeader: contractData.tradingClass || contractData.symbol || '',
                   companyName: contractData.exchange || '',
                   multiplier: contractData.multiplier || '',
-                  tradingClass: contractData.tradingClass || ''
+                  tradingClass: contractData.tradingClass || '',
+                  // 添加到期日期信息
+                  contractMonth: contractData.contractMonth || '',
+                  realExpirationDate: contractData.realExpirationDate || '',
+                  lastTradeTime: contractData.lastTradeTime || '',
+                  // 格式化到期日期显示
+                  expiryDisplay: contractData.realExpirationDate ? 
+                    `${contractData.realExpirationDate.slice(0,4)}-${contractData.realExpirationDate.slice(4,6)}-${contractData.realExpirationDate.slice(6,8)}` : 
+                    contractData.contractMonth || ''
                 };
                 
                 console.log(`映射后的合约数据:`, mappedContract);

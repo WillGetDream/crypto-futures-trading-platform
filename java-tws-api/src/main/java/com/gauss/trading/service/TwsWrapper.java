@@ -62,6 +62,11 @@ public class TwsWrapper extends DefaultEWrapper {
             contractMap.put("tradingClass", contractDetails.contract().tradingClass() != null ? contractDetails.contract().tradingClass() : "");
             contractMap.put("description", contractDetails.contract().description() != null ? contractDetails.contract().description() : "");
             
+            // 添加到期日期信息
+            contractMap.put("contractMonth", contractDetails.contractMonth() != null ? contractDetails.contractMonth() : "");
+            contractMap.put("realExpirationDate", contractDetails.realExpirationDate() != null ? contractDetails.realExpirationDate() : "");
+            contractMap.put("lastTradeTime", contractDetails.lastTradeTime() != null ? contractDetails.lastTradeTime() : "");
+            
             // 转换为JSON
             String json = objectMapper.writeValueAsString(contractMap);
             
