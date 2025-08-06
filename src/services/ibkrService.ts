@@ -409,7 +409,23 @@ export class IBKRService {
                 // Java API返回的data是JSON字符串，需要解析
                 const contractData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
                 console.log(`Java TWS API解析后的合约数据:`, contractData);
-                return [contractData];
+                
+                // 映射Java API数据格式到前端期望的格式
+                const mappedContract = {
+                  conid: contractData.conId?.toString() || '',
+                  symbol: contractData.symbol || '',
+                  secType: contractData.secType || '',
+                  exchange: contractData.exchange || '',
+                  currency: contractData.currency || '',
+                  description: contractData.description || '',
+                  companyHeader: contractData.tradingClass || contractData.symbol || '',
+                  companyName: contractData.exchange || '',
+                  multiplier: contractData.multiplier || '',
+                  tradingClass: contractData.tradingClass || ''
+                };
+                
+                console.log(`映射后的合约数据:`, mappedContract);
+                return [mappedContract];
               } catch (parseError) {
                 console.warn(`解析Java TWS API数据失败:`, parseError);
                 return [];
