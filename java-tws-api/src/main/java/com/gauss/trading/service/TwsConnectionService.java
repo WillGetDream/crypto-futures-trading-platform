@@ -31,6 +31,9 @@ public class TwsConnectionService {
     private int port = 4002;
     private int clientId = 0;
     private boolean isConnected = false;
+    
+    // 添加市场数据服务引用
+    private TwsMarketDataService marketDataService;
 
     /**
      * 连接到TWS Gateway
@@ -147,6 +150,14 @@ public class TwsConnectionService {
      */
     public TwsWrapper getWrapper() {
         return wrapper;
+    }
+    
+    public void setMarketDataService(TwsMarketDataService marketDataService) {
+        this.marketDataService = marketDataService;
+    }
+    
+    public TwsMarketDataService getMarketDataService() {
+        return marketDataService;
     }
 
     /**

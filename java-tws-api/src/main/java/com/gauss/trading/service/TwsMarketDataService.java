@@ -1,5 +1,7 @@
 package com.gauss.trading.service;
 
+import com.gauss.trading.controller.TwsWebSocketController;
+import com.ib.client.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,11 +10,12 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * TWS市场数据服务
  * 
- * 处理市场数据相关的操作
+ * 处理市场数据订阅和实时报价
  */
 @Service
 public class TwsMarketDataService {
@@ -22,130 +25,247 @@ public class TwsMarketDataService {
     @Autowired
     private TwsConnectionService connectionService;
 
-    // 活跃的市场数据请求
-    private final Map<Integer, String> activeMarketDataRequests = new ConcurrentHashMap<>();
+    @Autowired
+    private TwsWebSocketController webSocketController;
+
+    private final AtomicInteger nextTickerId = new AtomicInteger(1000);
+    private final ConcurrentHashMap<Integer, CompletableFuture<Object>> marketDataRequests = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, MarketDataInfo> activeSubscriptions = new ConcurrentHashMap<>();
 
     /**
-     * 请求市场数据
+     * 市场数据信息
      */
-    public CompletableFuture<Object> requestMarketData(String symbol, String secType, String exchange, String currency) {
-        logger.info("请求市场数据: symbol={}, secType={}, exchange={}, currency={}", symbol, secType, exchange, currency);
+    public static class MarketDataInfo {
+        public int tickerId;
+        public String symbol;
+        public String conId;
+        public double lastPrice;
+        public double bid;
+        public double ask;
+        public int bidSize;
+        public int askSize;
+        public int volume;
+        public long timestamp;
+        public String exchange;
+        public String contractMonth;
+        public String expiration;
 
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                // 这里应该调用TWS API请求市场数据
-                // 由于IBJts库未集成，暂时返回模拟数据
-                int tickerId = connectionService.getNextRequestId();
-                
-                Map<String, Object> mockResult = Map.of(
-                    "tickerId", tickerId,
-                    "symbol", symbol,
-                    "secType", secType,
-                    "exchange", exchange,
-                    "currency", currency,
-                    "price", 4500.25,
-                    "bid", 4500.00,
-                    "ask", 4500.50,
-                    "volume", 1234,
-                    "timestamp", System.currentTimeMillis()
-                );
+        public MarketDataInfo(int tickerId, String symbol, String conId) {
+            this.tickerId = tickerId;
+            this.symbol = symbol;
+            this.conId = conId;
+            this.timestamp = System.currentTimeMillis();
+        }
 
-                // 记录活跃请求
-                activeMarketDataRequests.put(tickerId, symbol);
-
-                logger.info("市场数据请求完成: tickerId={}, result={}", tickerId, mockResult);
-                return mockResult;
-
-            } catch (Exception e) {
-                logger.error("请求市场数据异常: {}", e.getMessage(), e);
-                throw new RuntimeException("请求市场数据失败: " + e.getMessage());
-            }
-        });
-    }
-
-    /**
-     * 取消市场数据
-     */
-    public void cancelMarketData(int tickerId) {
-        logger.info("取消市场数据: tickerId={}", tickerId);
-        
-        try {
-            // 这里应该调用TWS API取消市场数据
-            // 由于IBJts库未集成，暂时只记录日志
-            
-            String symbol = activeMarketDataRequests.remove(tickerId);
-            logger.info("市场数据请求已取消: tickerId={}, symbol={}", tickerId, symbol);
-
-        } catch (Exception e) {
-            logger.error("取消市场数据异常: {}", e.getMessage(), e);
+        public Map<String, Object> toMap() {
+            Map<String, Object> map = new ConcurrentHashMap<>();
+            map.put("tickerId", tickerId);
+            map.put("symbol", symbol);
+            map.put("conId", conId);
+            map.put("lastPrice", lastPrice);
+            map.put("bid", bid);
+            map.put("ask", ask);
+            map.put("bidSize", bidSize);
+            map.put("askSize", askSize);
+            map.put("volume", volume);
+            map.put("timestamp", timestamp);
+            map.put("exchange", exchange != null ? exchange : "");
+            map.put("contractMonth", contractMonth != null ? contractMonth : "");
+            map.put("expiration", expiration != null ? expiration : "");
+            return map;
         }
     }
 
     /**
-     * 获取活跃的市场数据请求
+     * 订阅期货合约的实时市场数据
      */
-    public Map<String, Object> getActiveMarketDataRequests() {
-        logger.info("获取活跃的市场数据请求: {}", activeMarketDataRequests);
-        return Map.of("activeRequests", activeMarketDataRequests);
-    }
-
-    /**
-     * 获取实时价格
-     */
-    public CompletableFuture<Object> getRealTimePrice(String symbol) {
-        logger.info("获取实时价格: symbol={}", symbol);
+    public CompletableFuture<Object> subscribeFuturesMarketData(String conId, String symbol, String contractMonth, String expiration) {
+        logger.info("订阅期货市场数据: conId={}, symbol={}, contractMonth={}, expiration={}", conId, symbol, contractMonth, expiration);
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // 这里应该调用TWS API获取实时价格
-                // 由于IBJts库未集成，暂时返回模拟数据
-                Map<String, Object> mockResult = Map.of(
-                    "symbol", symbol,
-                    "price", 4500.25 + Math.random() * 10, // 模拟价格波动
-                    "bid", 4500.00,
-                    "ask", 4500.50,
-                    "volume", 1234,
-                    "timestamp", System.currentTimeMillis()
-                );
+                if (!connectionService.isConnected()) {
+                    throw new RuntimeException("TWS未连接");
+                }
 
-                logger.info("实时价格获取完成: {}", mockResult);
-                return mockResult;
+                // 创建合约对象
+                Contract contract = new Contract();
+                contract.conid(Integer.parseInt(conId));
+                contract.symbol(symbol);
+                contract.secType("FUT");
+                contract.exchange("CME");
+                contract.currency("USD");
+                
+                // 设置合约月份和到期日
+                if (contractMonth != null && !contractMonth.isEmpty()) {
+                    contract.lastTradeDateOrContractMonth(contractMonth);
+                }
+                if (expiration != null && !expiration.isEmpty()) {
+                    contract.lastTradeDate(expiration);
+                }
+
+                // 获取下一个ticker ID
+                int tickerId = nextTickerId.getAndIncrement();
+                
+                // 创建市场数据信息对象
+                MarketDataInfo marketDataInfo = new MarketDataInfo(tickerId, symbol, conId);
+                marketDataInfo.contractMonth = contractMonth;
+                marketDataInfo.expiration = expiration;
+                marketDataInfo.exchange = "CME";
+                
+                // 存储订阅信息
+                activeSubscriptions.put(tickerId, marketDataInfo);
+                
+                // 注册请求
+                CompletableFuture<Object> future = new CompletableFuture<>();
+                marketDataRequests.put(tickerId, future);
+
+                // 订阅市场数据
+                connectionService.getClient().reqMktData(tickerId, contract, "", false, false, null);
+
+                logger.info("✅ 已发起期货市场数据订阅: tickerId={}, symbol={}", tickerId, symbol);
+                
+                // 返回初始市场数据信息
+                return marketDataInfo.toMap();
 
             } catch (Exception e) {
-                logger.error("获取实时价格异常: {}", e.getMessage(), e);
-                throw new RuntimeException("获取实时价格失败: " + e.getMessage());
+                logger.error("订阅期货市场数据异常: {}", e.getMessage(), e);
+                throw new RuntimeException("订阅市场数据失败: " + e.getMessage());
             }
         });
     }
 
     /**
-     * 获取历史数据
+     * 取消市场数据订阅
      */
-    public CompletableFuture<Object> getHistoricalData(String symbol, String duration, String barSize) {
-        logger.info("获取历史数据: symbol={}, duration={}, barSize={}", symbol, duration, barSize);
-
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                // 这里应该调用TWS API获取历史数据
-                // 由于IBJts库未集成，暂时返回模拟数据
-                Map<String, Object> mockResult = Map.of(
-                    "symbol", symbol,
-                    "duration", duration,
-                    "barSize", barSize,
-                    "bars", new Object[]{
-                        Map.of("time", "2024-01-01 09:30:00", "open", 4500.00, "high", 4501.00, "low", 4499.00, "close", 4500.50, "volume", 1000),
-                        Map.of("time", "2024-01-01 09:31:00", "open", 4500.50, "high", 4502.00, "low", 4500.00, "close", 4501.50, "volume", 1200),
-                        Map.of("time", "2024-01-01 09:32:00", "open", 4501.50, "high", 4503.00, "low", 4501.00, "close", 4502.25, "volume", 1100)
-                    }
-                );
-
-                logger.info("历史数据获取完成: symbol={}, barCount=3", symbol);
-                return mockResult;
-
-            } catch (Exception e) {
-                logger.error("获取历史数据异常: {}", e.getMessage(), e);
-                throw new RuntimeException("获取历史数据失败: " + e.getMessage());
+    public void cancelMarketData(int tickerId) {
+        try {
+            if (connectionService.isConnected()) {
+                connectionService.getClient().cancelMktData(tickerId);
+                activeSubscriptions.remove(tickerId);
+                marketDataRequests.remove(tickerId);
+                logger.info("✅ 已取消市场数据订阅: tickerId={}", tickerId);
             }
+        } catch (Exception e) {
+            logger.error("取消市场数据订阅异常: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 获取活跃的市场数据订阅
+     */
+    public Map<String, Object> getActiveSubscriptions() {
+        Map<String, Object> result = new ConcurrentHashMap<>();
+        activeSubscriptions.forEach((tickerId, info) -> {
+            result.put(String.valueOf(tickerId), info.toMap());
         });
+        return result;
+    }
+
+    /**
+     * 处理tick价格更新
+     */
+    public void handleTickPrice(int tickerId, int field, double price, TickAttrib attrib) {
+        MarketDataInfo info = activeSubscriptions.get(tickerId);
+        if (info != null) {
+            info.timestamp = System.currentTimeMillis();
+            
+            switch (field) {
+                case 1: // Bid
+                    info.bid = price;
+                    break;
+                case 2: // Ask
+                    info.ask = price;
+                    break;
+                case 4: // Last
+                    info.lastPrice = price;
+                    break;
+                case 6: // High
+                    // 可以添加high字段
+                    break;
+                case 7: // Low
+                    // 可以添加low字段
+                    break;
+                case 9: // Close
+                    // 可以添加close字段
+                    break;
+            }
+            
+            logger.debug("Tick价格更新: tickerId={}, field={}, price={}, symbol={}", tickerId, field, price, info.symbol);
+            
+            // 通知前端数据更新
+            notifyMarketDataUpdate(tickerId, info);
+        }
+    }
+
+    /**
+     * 处理tick数量更新
+     */
+    public void handleTickSize(int tickerId, int field, Decimal size) {
+        MarketDataInfo info = activeSubscriptions.get(tickerId);
+        if (info != null) {
+            info.timestamp = System.currentTimeMillis();
+            
+            switch (field) {
+                case 0: // Bid Size
+                    info.bidSize = (int) size.longValue();
+                    break;
+                case 3: // Ask Size
+                    info.askSize = (int) size.longValue();
+                    break;
+                case 5: // Last Size
+                    // 可以添加lastSize字段
+                    break;
+                case 8: // Volume
+                    info.volume = (int) size.longValue();
+                    break;
+            }
+            
+            logger.debug("Tick数量更新: tickerId={}, field={}, size={}, symbol={}", tickerId, field, size, info.symbol);
+            
+            // 通知前端数据更新
+            notifyMarketDataUpdate(tickerId, info);
+        }
+    }
+
+    /**
+     * 通知前端市场数据更新
+     */
+    private void notifyMarketDataUpdate(int tickerId, MarketDataInfo info) {
+        try {
+            // 完成对应的请求
+            CompletableFuture<Object> future = marketDataRequests.get(tickerId);
+            if (future != null && !future.isDone()) {
+                future.complete(info.toMap());
+            }
+            
+            // 记录市场数据更新日志
+            logger.info("📊 市场数据更新: tickerId={}, symbol={}, lastPrice={}, bid={}, ask={}, volume={}", 
+                tickerId, info.symbol, info.lastPrice, info.bid, info.ask, info.volume);
+            
+            // 通过WebSocket推送实时数据到前端
+            if (webSocketController != null) {
+                Map<String, Object> marketData = info.toMap();
+                webSocketController.broadcastMarketData(info.symbol, marketData);
+                logger.debug("WebSocket推送市场数据: symbol={}, data={}", info.symbol, marketData);
+            }
+            
+        } catch (Exception e) {
+            logger.error("通知市场数据更新异常: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 获取指定ticker的市场数据
+     */
+    public MarketDataInfo getMarketData(int tickerId) {
+        return activeSubscriptions.get(tickerId);
+    }
+
+    /**
+     * 获取所有活跃的市场数据
+     */
+    public Map<Integer, MarketDataInfo> getAllMarketData() {
+        return new ConcurrentHashMap<>(activeSubscriptions);
     }
 } 

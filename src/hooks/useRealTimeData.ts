@@ -37,6 +37,14 @@ export interface TradingInstrument {
   tickSize?: number;
   contractSize?: number;
   currency?: string;
+  // 添加期货到期日期相关字段
+  expiration?: string;
+  contractMonth?: string;
+  lastTradingDay?: string;
+  maturityDate?: string;
+  // 添加TWS API相关字段
+  tradingClass?: string;
+  multiplier?: string;
 }
 
 // 支持的交易品种列表
@@ -60,7 +68,11 @@ export const TRADING_INSTRUMENTS: TradingInstrument[] = [
     category: 'equity_index',
     tickSize: 0.25,
     contractSize: 5,
-    currency: 'USD'
+    currency: 'USD',
+    expiration: '2023-12-22',
+    contractMonth: '2023-12',
+    lastTradingDay: '2023-12-21',
+    maturityDate: '2024-03-22'
   },
   { 
     id: 'mnq', 
@@ -70,7 +82,11 @@ export const TRADING_INSTRUMENTS: TradingInstrument[] = [
     category: 'equity_index',
     tickSize: 0.25,
     contractSize: 2,
-    currency: 'USD'
+    currency: 'USD',
+    expiration: '2023-12-22',
+    contractMonth: '2023-12',
+    lastTradingDay: '2023-12-21',
+    maturityDate: '2024-03-22'
   },
   { 
     id: 'mym', 
@@ -80,7 +96,11 @@ export const TRADING_INSTRUMENTS: TradingInstrument[] = [
     category: 'equity_index',
     tickSize: 1.0,
     contractSize: 0.5,
-    currency: 'USD'
+    currency: 'USD',
+    expiration: '2023-12-22',
+    contractMonth: '2023-12',
+    lastTradingDay: '2023-12-21',
+    maturityDate: '2024-03-22'
   },
   { 
     id: 'mrty', 
@@ -90,7 +110,11 @@ export const TRADING_INSTRUMENTS: TradingInstrument[] = [
     category: 'equity_index',
     tickSize: 0.1,
     contractSize: 5,
-    currency: 'USD'
+    currency: 'USD',
+    expiration: '2023-12-22',
+    contractMonth: '2023-12',
+    lastTradingDay: '2023-12-21',
+    maturityDate: '2024-03-22'
   }
 ];
 
@@ -355,6 +379,7 @@ export const useRealTimeData = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [priceHistory, setPriceHistory] = useState<PriceData[]>([]);
   const [allInstruments, setAllInstruments] = useState<TradingInstrument[]>([]);
+  const [twsMarketData, setTwsMarketData] = useState<any>(null);
 
   // 动态获取所有交易工具
   const updateInstruments = useCallback(() => {
@@ -378,6 +403,104 @@ export const useRealTimeData = () => {
       window.removeEventListener('contractsUpdated', handleContractsUpdated);
     };
   }, [updateInstruments]);
+
+  // 监听TWS市场数据更新事件
+  useEffect(() => {
+    const handleMarketDataUpdated = (event: CustomEvent) => {
+      const { symbol, marketData } = event.detail;
+      console.log('收到TWS市场数据更新:', symbol, marketData);
+      
+      // 更新TWS市场数据状态
+      setTwsMarketData(marketData);
+      
+      // 如果是当前选中的合约，更新价格
+      if (selectedCrypto.symbol === symbol) {
+        if (marketData.lastPrice && marketData.lastPrice > 0) {
+          setCurrentPrice(marketData.lastPrice);
+          
+          // 添加到价格历史
+          const newPriceData: PriceData = {
+            time: new Date().toLocaleTimeString('zh-CN', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              second: '2-digit'
+            }),
+            price: marketData.lastPrice,
+            volume: marketData.volume || 0
+          };
+          
+          setPriceHistory(prev => {
+            const updated = [...prev, newPriceData];
+            // 保持最近50个数据点
+            return updated.slice(-50);
+          });
+        }
+        
+        // 更新成交量
+        if (marketData.volume) {
+          setVolume24h(marketData.volume);
+        }
+      }
+    };
+
+    window.addEventListener('marketDataUpdated', handleMarketDataUpdated as EventListener);
+    return () => {
+      window.removeEventListener('marketDataUpdated', handleMarketDataUpdated as EventListener);
+    };
+  }, [selectedCrypto.symbol]);
+
+  // 定期获取活跃订阅的市场数据
+  useEffect(() => {
+    const fetchActiveMarketData = async () => {
+      try {
+        const subscriptions = await ibkrService.getActiveSubscriptions();
+        console.log('当前活跃订阅:', subscriptions);
+        
+        // 如果有活跃订阅，获取最新数据
+        if (subscriptions && Object.keys(subscriptions).length > 0) {
+          Object.values(subscriptions).forEach((subscription: any) => {
+            if (subscription.symbol === selectedCrypto.symbol) {
+              console.log('找到匹配的订阅数据:', subscription);
+              
+              if (subscription.lastPrice && subscription.lastPrice > 0) {
+                setCurrentPrice(subscription.lastPrice);
+                
+                // 添加到价格历史
+                const newPriceData: PriceData = {
+                  time: new Date().toLocaleTimeString('zh-CN', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit'
+                  }),
+                  price: subscription.lastPrice,
+                  volume: subscription.volume || 0
+                };
+                
+                setPriceHistory(prev => {
+                  const updated = [...prev, newPriceData];
+                  return updated.slice(-50);
+                });
+              }
+              
+              if (subscription.volume) {
+                setVolume24h(subscription.volume);
+              }
+            }
+          });
+        }
+      } catch (error) {
+        console.error('获取活跃订阅数据失败:', error);
+      }
+    };
+
+    // 每5秒获取一次活跃订阅数据
+    const interval = setInterval(fetchActiveMarketData, 5000);
+    
+    // 立即执行一次
+    fetchActiveMarketData();
+    
+    return () => clearInterval(interval);
+  }, [selectedCrypto.symbol]);
 
   const [portfolioData, setPortfolioData] = useState<PortfolioData[]>([
     {

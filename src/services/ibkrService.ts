@@ -276,63 +276,14 @@ export class IBKRService {
       // 强制使用TWS API搜索，不检查缓存
       console.log('🎯 强制使用TWS API搜索，跳过缓存检查');
       
-      // 步骤1: 使用 secdef/search 搜索基础合约获取所有月份
-      const baseContracts = await this.searchBaseContracts(symbol, exchange, currency);
+      // 直接使用searchBaseContracts获取完整数据
+      const contracts = await this.searchBaseContracts(symbol, exchange, currency);
       
-      if (baseContracts && baseContracts.length > 0) {
-        console.log(`找到 ${baseContracts.length} 个基础合约`);
+      if (contracts && contracts.length > 0) {
+        console.log(`✅ TWS API成功获取 ${contracts.length} 个合约的详细信息`);
+        console.log('🎯 直接返回TWS API实时数据，不保存缓存');
         
-        // 步骤2: 获取每个合约的详细信息
-        const detailedContracts: any[] = [];
-        for (const baseContract of baseContracts) {
-          try {
-            const details = await this.getContractDetails(parseInt(baseContract.conid));
-            if (details) {
-              // 使用基础合约信息，添加详情
-              const contractData = {
-                conid: baseContract.conid,
-                symbol: baseContract.symbol,
-                secType: baseContract.secType || 'FUT',
-                exchange: baseContract.exchange,
-                currency: baseContract.currency || 'USD',
-                description: details.description || baseContract.description,
-                companyHeader: details.companyHeader || baseContract.companyHeader,
-                companyName: details.companyName || baseContract.companyName,
-                sections: details.sections || baseContract.sections,
-                expiration: details.expiration,
-                multiplier: details.multiplier,
-                maturityDate: details.maturityDate,
-                tradingClass: details.tradingClass,
-                desc1: details.desc1
-              };
-              detailedContracts.push(contractData);
-            }
-          } catch (err) {
-            console.warn(`获取合约 ${baseContract.conid} 详情失败:`, err);
-            // 如果获取详情失败，使用基础信息
-            const contractData = {
-              conid: baseContract.conid,
-              symbol: baseContract.symbol,
-              secType: baseContract.secType || 'FUT',
-              exchange: baseContract.exchange,
-              currency: baseContract.currency || 'USD',
-              description: baseContract.description,
-              companyHeader: baseContract.companyHeader,
-              companyName: baseContract.companyName,
-              sections: baseContract.sections
-            };
-            detailedContracts.push(contractData);
-          }
-        }
-        
-        if (detailedContracts.length > 0) {
-          console.log(`✅ TWS API成功获取 ${detailedContracts.length} 个合约的详细信息`);
-          
-          // 不保存到数据库，直接返回实时数据
-          console.log('🎯 直接返回TWS API实时数据，不保存缓存');
-          
-          return detailedContracts;
-        }
+        return contracts;
       }
       
       // 如果TWS API失败，返回空数组
@@ -422,10 +373,14 @@ export class IBKRService {
                   companyName: contractData.exchange || '',
                   multiplier: contractData.multiplier || '',
                   tradingClass: contractData.tradingClass || '',
-                  // 添加到期日期信息
+                  // 添加到期日期信息 - 确保正确映射
                   contractMonth: contractData.contractMonth || '',
                   realExpirationDate: contractData.realExpirationDate || '',
                   lastTradeTime: contractData.lastTradeTime || '',
+                  // 添加expiration字段用于前端显示
+                  expiration: contractData.realExpirationDate ? 
+                    `${contractData.realExpirationDate.slice(0,4)}-${contractData.realExpirationDate.slice(4,6)}-${contractData.realExpirationDate.slice(6,8)}` : 
+                    '',
                   // 格式化到期日期显示
                   expiryDisplay: contractData.realExpirationDate ? 
                     `${contractData.realExpirationDate.slice(0,4)}-${contractData.realExpirationDate.slice(4,6)}-${contractData.realExpirationDate.slice(6,8)}` : 
@@ -433,6 +388,13 @@ export class IBKRService {
                 };
                 
                 console.log(`映射后的合约数据:`, mappedContract);
+                console.log(`🔍 期货日期信息检查:`);
+                console.log(`  - contractMonth: ${mappedContract.contractMonth}`);
+                console.log(`  - realExpirationDate: ${mappedContract.realExpirationDate}`);
+                console.log(`  - expiration: ${mappedContract.expiration}`);
+                console.log(`  - lastTradeTime: ${mappedContract.lastTradeTime}`);
+                console.log(`  - tradingClass: ${mappedContract.tradingClass}`);
+                console.log(`  - multiplier: ${mappedContract.multiplier}`);
                 return [mappedContract];
               } catch (parseError) {
                 console.warn(`解析Java TWS API数据失败:`, parseError);
@@ -722,8 +684,54 @@ export class IBKRService {
     }
   }
 
+  // 订阅期货市场数据
+  async subscribeFuturesMarketData(conId: string, symbol: string, contractMonth?: string, expiration?: string): Promise<any> {
+    try {
+      console.log(`🔍 订阅期货市场数据: conId=${conId}, symbol=${symbol}, contractMonth=${contractMonth}, expiration=${expiration}`);
+      
+      const response = await fetch(`http://localhost:8080/api/tws/market-data/subscribe-futures`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          conId,
+          symbol,
+          ...(contractMonth && { contractMonth }),
+          ...(expiration && { expiration })
+        })
+      });
 
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ 期货市场数据订阅成功:', data);
+        return data.data;
+      } else {
+        throw new Error(`订阅失败: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('❌ 订阅期货市场数据失败:', error);
+      throw error;
+    }
+  }
 
+  // 获取活跃的市场数据订阅
+  async getActiveSubscriptions(): Promise<any> {
+    try {
+      const response = await fetch(`http://localhost:8080/api/tws/market-data/subscriptions`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ 获取活跃订阅成功:', data);
+        return data.data;
+      } else {
+        throw new Error(`获取订阅失败: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('❌ 获取活跃订阅失败:', error);
+      throw error;
+    }
+  }
 
 
   // 断开连接

@@ -89,6 +89,11 @@ public class TwsWrapper extends DefaultEWrapper {
         try {
             logger.debug("Tick价格: tickerId={}, field={}, price={}", tickerId, field, price);
             
+            // 转发给市场数据服务处理
+            if (connectionService.getMarketDataService() != null) {
+                connectionService.getMarketDataService().handleTickPrice(tickerId, field, price, attrib);
+            }
+            
             // 创建市场数据对象
             Map<String, Object> marketData = Map.of(
                 "tickerId", tickerId,
@@ -109,6 +114,11 @@ public class TwsWrapper extends DefaultEWrapper {
     public void tickSize(int tickerId, int field, Decimal size) {
         try {
             logger.debug("Tick数量: tickerId={}, field={}, size={}", tickerId, field, size);
+            
+            // 转发给市场数据服务处理
+            if (connectionService.getMarketDataService() != null) {
+                connectionService.getMarketDataService().handleTickSize(tickerId, field, size);
+            }
             
             Map<String, Object> marketData = Map.of(
                 "tickerId", tickerId,

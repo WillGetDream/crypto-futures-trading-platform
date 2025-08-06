@@ -168,7 +168,8 @@ public class TwsApiController {
             @RequestParam(defaultValue = "CME") String exchange,
             @RequestParam(defaultValue = "USD") String currency) {
         
-        return marketDataService.requestMarketData(symbol, secType, exchange, currency)
+        // 使用新的订阅方法
+        return marketDataService.subscribeFuturesMarketData("0", symbol, null, null)
                 .thenApply(result -> ResponseEntity.ok(Map.of(
                     "success", true,
                     "data", result
@@ -177,6 +178,42 @@ public class TwsApiController {
                     "success", false,
                     "error", throwable.getMessage()
                 )));
+    }
+
+    /**
+     * 订阅期货市场数据
+     */
+    @PostMapping("/market-data/subscribe-futures")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> subscribeFuturesMarketData(
+            @RequestParam String conId,
+            @RequestParam String symbol,
+            @RequestParam(required = false) String contractMonth,
+            @RequestParam(required = false) String expiration) {
+        
+        return marketDataService.subscribeFuturesMarketData(conId, symbol, contractMonth, expiration)
+                .thenApply(result -> ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", result
+                )))
+                .exceptionally(throwable -> ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "error", throwable.getMessage()
+                )));
+    }
+
+    /**
+     * 获取活跃的市场数据订阅
+     */
+    @GetMapping("/market-data/subscriptions")
+    public ResponseEntity<Map<String, Object>> getActiveSubscriptions() {
+        Map<String, Object> subscriptions = marketDataService.getActiveSubscriptions();
+        
+        Map<String, Object> response = Map.of(
+            "success", true,
+            "data", subscriptions
+        );
+        
+        return ResponseEntity.ok(response);
     }
 
     /**

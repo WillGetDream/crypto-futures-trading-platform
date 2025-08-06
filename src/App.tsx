@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { PriceChart } from './components/PriceChart';
+import { ProfessionalChart } from './components/ProfessionalChart';
 import { TradingPanel } from './components/TradingPanel';
 import { Portfolio } from './components/Portfolio';
 import { MarketList } from './components/MarketList';
@@ -18,8 +19,9 @@ import { ContractDataViewer } from './components/ContractDataViewer';
 import { IBGatewayConfigCheck } from './components/IBGatewayConfigCheck';
 import { JavaCompatibleTest } from './components/JavaCompatibleTest';
 import TwsApiTest from './components/TwsApiTest';
-import { useRealTimeData } from './hooks/useRealTimeData';
+import { useRealTimeData, TradingInstrument } from './hooks/useRealTimeData';
 import { useUser } from '@clerk/clerk-react';
+import { ibkrService } from './services/ibkrService';
 
 function AppContent() {
   const { isSignedIn, isLoaded } = useUser();
@@ -50,6 +52,71 @@ function AppContent() {
     setShowContractViewer(false);
     setSelectedContract(null);
   };
+
+  // 监听合约选择事件 - 新增
+  useEffect(() => {
+    const handleContractSelected = async (event: CustomEvent) => {
+      const contractData = event.detail;
+      console.log('收到合约选择事件:', contractData);
+      
+      // 创建TradingInstrument对象
+      const newInstrument: TradingInstrument = {
+        id: contractData.symbol.toLowerCase(),
+        symbol: contractData.symbol,
+        name: contractData.description || contractData.symbol,
+        type: 'futures',
+        category: 'equity_index',
+        tickSize: 0.25, // 默认值，可以根据合约类型调整
+        contractSize: parseInt(contractData.multiplier) || 1,
+        currency: 'USD',
+        // 添加日期信息
+        expiration: contractData.expiration,
+        contractMonth: contractData.contractMonth,
+        lastTradingDay: contractData.lastTradeTime,
+        maturityDate: contractData.realExpirationDate,
+        // 添加TWS API字段
+        tradingClass: contractData.tradingClass,
+        multiplier: contractData.multiplier
+      };
+      
+      // 直接切换到新合约
+      switchCrypto(newInstrument);
+      
+      // 订阅期货市场数据
+      try {
+        console.log('🔍 开始订阅期货市场数据...');
+        const marketData = await ibkrService.subscribeFuturesMarketData(
+          contractData.conid,
+          contractData.symbol,
+          contractData.contractMonth,
+          contractData.realExpirationDate
+        );
+        console.log('✅ 期货市场数据订阅成功:', marketData);
+        
+        // 这里可以触发图表更新事件
+        window.dispatchEvent(new CustomEvent('marketDataUpdated', {
+          detail: {
+            symbol: contractData.symbol,
+            marketData: marketData
+          }
+        }));
+        
+      } catch (error) {
+        console.error('❌ 订阅期货市场数据失败:', error);
+      }
+      
+      // 显示成功消息
+      console.log(`✅ 已切换到合约: ${contractData.symbol}`);
+    };
+
+    // 添加事件监听器
+    window.addEventListener('contractSelected', handleContractSelected as unknown as EventListener);
+
+    // 清理事件监听器
+    return () => {
+      window.removeEventListener('contractSelected', handleContractSelected as unknown as EventListener);
+    };
+  }, [switchCrypto]);
 
   if (!isLoaded) {
     return (
@@ -111,59 +178,66 @@ function AppContent() {
         </div>
       </div>
       
-      <div className="container mx-auto px-6 py-2 space-y-6">
-        {/* 价格图表和交易面板 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div className="lg:col-span-2">
-            <PriceChart 
-              currentPrice={currentPrice}
-              priceHistory={priceHistory}
-              selectedCrypto={selectedCrypto}
-              priceChange24h={priceChange24h}
-              volume24h={volume24h}
-            />
-          </div>
-          <div className="space-y-6">
-            <TradingPanel currentPrice={currentPrice} />
-            {selectedCrypto.type === 'futures' && (
-              <FuturesTrading 
+      {/* 主内容区域 */}
+      <div className="flex-1 p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* 左侧：图表和交易面板 */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* 专业价格图表 */}
+            {selectedCrypto.type === 'futures' ? (
+              <FuturesTrading
                 currentPrice={currentPrice}
                 selectedInstrument={selectedCrypto}
                 priceChange24h={priceChange24h}
                 volume24h={volume24h}
               />
+            ) : (
+              <ProfessionalChart
+                data={priceHistory.map(p => ({
+                  time: p.time,
+                  price: p.price,
+                  volume: p.volume || 0
+                }))}
+                symbol={selectedCrypto.symbol}
+                currentPrice={currentPrice}
+                priceChange={priceChange24h}
+                priceChangePercent={priceChange24h}
+                volume24h={volume24h}
+                showVolume={true}
+                showMA={true}
+                showBollinger={false}
+              />
             )}
+            
+            {/* 交易面板 */}
+            <TradingPanel currentPrice={currentPrice} />
+          </div>
+
+          {/* 右侧：投资组合和市场列表 */}
+          <div className="space-y-6">
+            <Portfolio portfolioData={portfolioData} />
+            <MarketList 
+              currentPrice={currentPrice}
+              priceHistory={priceHistory}
+              selectedCrypto={selectedCrypto}
+              priceChange24h={priceChange24h}
+            />
           </div>
         </div>
-
-        {/* 投资组合和比特币详情 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Portfolio portfolioData={portfolioData} />
-          <MarketList 
-            currentPrice={currentPrice}
-            priceHistory={priceHistory}
-            selectedCrypto={selectedCrypto}
-            priceChange24h={priceChange24h}
-          />
-        </div>
-
-        {/* 订单历史 */}
-        <OrderHistory />
       </div>
-      
 
+      {/* 订单历史 */}
+      <OrderHistory />
 
-                  {/* 合约搜索管理器 */}
-            <div className="container mx-auto px-6 py-4" data-component="contract-search-manager">
-              <ContractSearchManager />
-            </div>
+      {/* 合约搜索管理器 */}
+      <div className="container mx-auto px-6 py-4" data-component="contract-search-manager">
+        <ContractSearchManager />
+      </div>
 
-
-
-            {/* 期货合约配置 */}
-            <div className="container mx-auto px-6 py-4">
-              <ContractConfig />
-            </div>
+      {/* 期货合约配置 */}
+      <div className="container mx-auto px-6 py-4">
+        <ContractConfig />
+      </div>
 
       {/* TWS API测试 */}
       <div className="container mx-auto px-6 py-4">

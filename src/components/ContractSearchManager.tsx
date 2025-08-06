@@ -18,6 +18,12 @@ interface ContractInfo {
   maturityDate?: string;
   tradingClass?: string;
   desc1?: string;
+  // 添加从TWS API返回的日期字段
+  contractMonth?: string;
+  realExpirationDate?: string;
+  lastTradeTime?: string;
+  // 添加格式化显示字段
+  expiryDisplay?: string;
 }
 
 interface ConfiguredContract {
@@ -106,6 +112,16 @@ export const ContractSearchManager: React.FC = () => {
       if (results && results.length > 0) {
         setSearchResults(results);
         console.log('✅ TWS API搜索结果:', results);
+        console.log('🔍 第一个合约的日期信息:');
+        if (results[0]) {
+          const contract = results[0];
+          console.log(`  - contractMonth: ${contract.contractMonth}`);
+          console.log(`  - realExpirationDate: ${contract.realExpirationDate}`);
+          console.log(`  - expiration: ${contract.expiration}`);
+          console.log(`  - lastTradeTime: ${contract.lastTradeTime}`);
+          console.log(`  - tradingClass: ${contract.tradingClass}`);
+          console.log(`  - multiplier: ${contract.multiplier}`);
+        }
         setError(''); // 清除错误信息
         
         // 显示成功消息
@@ -148,10 +164,29 @@ export const ContractSearchManager: React.FC = () => {
     // 触发合约更新事件，通知其他组件
     window.dispatchEvent(new CustomEvent('contractsUpdated'));
     
+    // 触发合约直接显示事件 - 新增
+    const contractDisplayEvent = new CustomEvent('contractSelected', {
+      detail: {
+        symbol: contract.symbol,
+        conid: contract.conid,
+        description: contract.description || contract.companyHeader,
+        exchange: contract.exchange,
+        type: 'futures',
+        // 添加日期信息
+        contractMonth: contract.contractMonth,
+        realExpirationDate: contract.realExpirationDate,
+        expiration: contract.expiration,
+        lastTradeTime: contract.lastTradeTime,
+        tradingClass: contract.tradingClass,
+        multiplier: contract.multiplier
+      }
+    });
+    window.dispatchEvent(contractDisplayEvent);
+    
     console.log(`已配置合约: ${contract.symbol} (${contract.conid})`);
     
     // 显示成功消息
-    alert(`🎯 TWS API合约配置成功！\n\n✅ 合约 ${contract.symbol} 已添加到交易界面\n\n📊 合约详情:\n• 合约ID: ${contract.conid}\n• 交易所: ${contract.exchange}\n• 描述: ${contract.description || contract.companyHeader}\n\n🚀 现在您可以在上方交易界面的"🎯 TWS API 已配置合约"分组中选择此合约进行交易！`);
+    alert(`🎯 TWS API合约配置成功！\n\n✅ 合约 ${contract.symbol} 已添加到交易界面并直接显示\n\n📊 合约详情:\n• 合约ID: ${contract.conid}\n• 交易所: ${contract.exchange}\n• 描述: ${contract.description || contract.companyHeader}\n${contract.contractMonth ? `• 合约月份: ${contract.contractMonth}\n` : ''}${contract.realExpirationDate ? `• 到期日期: ${contract.realExpirationDate}\n` : ''}${contract.tradingClass ? `• 交易类: ${contract.tradingClass}\n` : ''}${contract.multiplier ? `• 乘数: ${contract.multiplier}\n` : ''}\n🚀 现在您可以在上方交易界面直接查看此合约的数据！`);
   };
 
   // 移除配置的合约
@@ -365,6 +400,56 @@ export const ContractSearchManager: React.FC = () => {
                         <span>货币: {contract.currency}</span>
                         <span>ID: {contract.conid}</span>
                       </div>
+                      {/* 添加到期日期信息显示 */}
+                      {(contract.expiration || contract.contractMonth || contract.maturityDate || contract.tradingClass || contract.realExpirationDate) && (
+                        <div className="mt-2 p-2 bg-gray-600 rounded text-xs">
+                          <div className="text-gray-300 mb-1">合约详情:</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {contract.contractMonth && (
+                              <div>
+                                <span className="text-gray-400">月份:</span>
+                                <span className="text-white ml-1">{contract.contractMonth}</span>
+                              </div>
+                            )}
+                            {contract.expiration && (
+                              <div>
+                                <span className="text-gray-400">到期:</span>
+                                <span className="text-white ml-1">{contract.expiration}</span>
+                              </div>
+                            )}
+                            {contract.realExpirationDate && (
+                              <div>
+                                <span className="text-gray-400">实际到期:</span>
+                                <span className="text-white ml-1">{contract.realExpirationDate}</span>
+                              </div>
+                            )}
+                            {contract.maturityDate && (
+                              <div>
+                                <span className="text-gray-400">到期日:</span>
+                                <span className="text-white ml-1">{contract.maturityDate}</span>
+                              </div>
+                            )}
+                            {contract.lastTradeTime && (
+                              <div>
+                                <span className="text-gray-400">最后交易:</span>
+                                <span className="text-white ml-1">{contract.lastTradeTime}</span>
+                              </div>
+                            )}
+                            {contract.tradingClass && (
+                              <div>
+                                <span className="text-gray-400">交易类:</span>
+                                <span className="text-white ml-1">{contract.tradingClass}</span>
+                              </div>
+                            )}
+                            {contract.multiplier && (
+                              <div>
+                                <span className="text-gray-400">乘数:</span>
+                                <span className="text-white ml-1">{contract.multiplier}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">

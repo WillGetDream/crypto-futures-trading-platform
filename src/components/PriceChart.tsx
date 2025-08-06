@@ -51,6 +51,50 @@ export const PriceChart: React.FC<PriceChartProps> = ({
   
   const displayVolume24h = volume24h || displayHistory.reduce((sum, p) => sum + (p.volume || 0), 0);
 
+  // 生成价格刻度
+  const generatePriceTicks = () => {
+    const priceRange = high24h - low24h;
+    const tickCount = 6;
+    const ticks = [];
+    
+    for (let i = 0; i <= tickCount; i++) {
+      const price = low24h + (priceRange * i / tickCount);
+      const y = ((high24h - price) / priceRange) * 256;
+      ticks.push({ price, y });
+    }
+    
+    return ticks;
+  };
+
+  const priceTicks = generatePriceTicks();
+
+  // 生成时间刻度
+  const generateTimeTicks = () => {
+    if (displayHistory.length <= 1) return [];
+    
+    const tickCount = 5;
+    const ticks = [];
+    const step = Math.max(1, Math.floor(displayHistory.length / tickCount));
+    
+    for (let i = 0; i < displayHistory.length; i += step) {
+      if (i < displayHistory.length) {
+        const x = (i / Math.max(1, displayHistory.length - 1)) * 800;
+        const time = displayHistory[i].time;
+        ticks.push({ x, time: time.slice(0, 5) });
+      }
+    }
+    
+    // 添加最后一个时间点
+    if (displayHistory.length > 0) {
+      const lastTime = displayHistory[displayHistory.length - 1].time;
+      ticks.push({ x: 800, time: lastTime.slice(0, 5) });
+    }
+    
+    return ticks;
+  };
+
+  const timeTicks = generateTimeTicks();
+
   return (
     <div className="bg-gray-800 rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
@@ -88,24 +132,72 @@ export const PriceChart: React.FC<PriceChartProps> = ({
               <stop offset="0%" stopColor="#10B981" stopOpacity="0.3"/>
               <stop offset="100%" stopColor="#10B981" stopOpacity="0"/>
             </linearGradient>
+            <linearGradient id="priceGradientRed" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#EF4444" stopOpacity="0.3"/>
+              <stop offset="100%" stopColor="#EF4444" stopOpacity="0"/>
+            </linearGradient>
           </defs>
           
-          {/* 网格线 */}
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+          {/* 主要网格线 */}
+          {priceTicks.map((tick, index) => (
             <line
-              key={i}
+              key={`grid-${index}`}
               x1="0"
-              y1={i * 51.2}
+              y1={tick.y}
               x2="100%"
-              y2={i * 51.2}
+              y2={tick.y}
               stroke="#374151"
               strokeWidth="1"
-              opacity="0.3"
+              opacity="0.4"
             />
           ))}
           
+          {/* 垂直网格线 */}
+          {timeTicks.map((tick, index) => (
+            <line
+              key={`vgrid-${index}`}
+              x1={tick.x}
+              y1="0"
+              x2={tick.x}
+              y2="100%"
+              stroke="#374151"
+              strokeWidth="1"
+              opacity="0.2"
+            />
+          ))}
+          
+          {/* 价格刻度标签 */}
+          {priceTicks.map((tick, index) => (
+            <text
+              key={`price-${index}`}
+              x="5"
+              y={tick.y + 4}
+              fill="#9CA3AF"
+              fontSize="10"
+              fontFamily="monospace"
+              textAnchor="start"
+            >
+              ${tick.price.toFixed(2)}
+            </text>
+          ))}
+          
+          {/* 时间刻度标签 */}
+          {timeTicks.map((tick, index) => (
+            <text
+              key={`time-${index}`}
+              x={tick.x}
+              y="250"
+              fill="#9CA3AF"
+              fontSize="10"
+              fontFamily="monospace"
+              textAnchor="middle"
+            >
+              {tick.time}
+            </text>
+          ))}
+          
           {/* 价格曲线 */}
-          {displayHistory.length > 0 && currentPrice > 0 && (
+          {displayHistory.length > 0 && currentPrice > 0 &&
             <>
               {displayHistory.length > 1 ? (
                 <>
@@ -118,7 +210,7 @@ export const PriceChart: React.FC<PriceChartProps> = ({
                       const safeY = Math.max(0, Math.min(256, isNaN(y) ? 128 : y));
                       return `${x},${safeY}`;
                     }).join(' L ')} L 800,256 L 0,256 Z`}
-                    fill="url(#priceGradient)"
+                    fill={isPositive ? "url(#priceGradient)" : "url(#priceGradientRed)"}
                   />
                   <polyline
                     fill="none"
@@ -145,6 +237,7 @@ export const PriceChart: React.FC<PriceChartProps> = ({
                   strokeWidth="2"
                 />
               )}
+              
               {/* 当前价格点 */}
               <circle
                 cx={displayHistory.length > 1 ? 800 : 400}
@@ -160,19 +253,58 @@ export const PriceChart: React.FC<PriceChartProps> = ({
                 fill={isPositive ? "#10B981" : "#EF4444"}
                 className="animate-pulse"
               />
+              
+              {/* 价格点光晕效果 */}
+              <circle
+                cx={displayHistory.length > 1 ? 800 : 400}
+                cy={(() => {
+                  if (displayHistory.length > 1 && safeCurrentPrice > 0) {
+                    const priceRange = high24h - low24h;
+                    const y = priceRange > 0 ? ((high24h - safeCurrentPrice) / priceRange) * 256 : 128;
+                    return Math.max(0, Math.min(256, isNaN(y) ? 128 : y));
+                  }
+                  return 128;
+                })()}
+                r="8"
+                fill="none"
+                stroke={isPositive ? "#10B981" : "#EF4444"}
+                strokeWidth="1"
+                opacity="0.5"
+                className="animate-ping"
+              />
             </>
           )}
+          
+          {/* 坐标轴 */}
+          <line x1="0" y1="0" x2="0" y2="256" stroke="#6B7280" strokeWidth="1" /> {/* Y轴 */}
+          <line x1="0" y1="256" x2="800" y2="256" stroke="#6B7280" strokeWidth="1" /> {/* X轴 */}
         </svg>
         
-        {/* 时间轴 */}
-        <div className="absolute bottom-0 left-0 right-0 flex justify-between text-sm text-gray-400">
-          {displayHistory.length > 1 ? (
-            displayHistory.slice(-5).map((point, index) => (
-              <span key={index}>{point.time.slice(0, 5)}</span>
-            ))
-          ) : (
-            <span className="mx-auto">实时</span>
-          )}
+        {/* 图表标题 */}
+        <div className="absolute top-2 left-2 text-xs text-gray-400 font-medium">
+          {selectedCrypto.name} - 价格走势图
+        </div>
+        
+        {/* 当前价格标签 */}
+        {currentPrice > 0 && (
+          <div className="absolute top-2 right-2 text-xs text-gray-400">
+            <span className="font-medium">当前: </span>
+            <span className={`font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+              ${currentPrice.toFixed(2)}
+            </span>
+          </div>
+        )}
+      </div>
+      
+      {/* 图表信息栏 */}
+      <div className="mt-4 flex justify-between items-center text-xs text-gray-400">
+        <div className="flex space-x-4">
+          <span>数据源: TWS API</span>
+          <span>更新频率: 实时</span>
+        </div>
+        <div className="flex space-x-4">
+          <span>价格精度: 2位小数</span>
+          <span>时间格式: HH:MM</span>
         </div>
       </div>
     </div>

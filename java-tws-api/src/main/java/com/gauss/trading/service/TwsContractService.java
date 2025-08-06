@@ -73,22 +73,26 @@ public class TwsContractService {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // 这里应该调用TWS API获取合约详情
-                // 由于IBJts库未集成，暂时返回模拟数据
-                Map<String, Object> mockResult = Map.of(
-                    "conId", conId,
-                    "symbol", "MES",
-                    "secType", "FUT",
-                    "exchange", "CME",
-                    "currency", "USD",
-                    "description", "Micro E-mini S&P 500",
-                    "lastTradingDay", "20241220",
-                    "multiplier", "5",
-                    "tradingClass", "MES"
-                );
+                if (!connectionService.isConnected()) {
+                    throw new RuntimeException("TWS未连接");
+                }
 
-                logger.info("合约详情获取完成: {}", mockResult);
-                return mockResult;
+                // 创建合约对象
+                Contract contract = new Contract();
+                contract.conid(conId);
+
+                // 注册请求
+                int reqId = connectionService.getNextRequestId();
+                CompletableFuture<Object> future = new CompletableFuture<>();
+                connectionService.registerPendingRequest(reqId, future);
+
+                // 请求合约详情
+                connectionService.getClient().reqContractDetails(reqId, contract);
+
+                // 等待响应
+                Object result = future.get();
+                logger.info("合约详情获取完成: {}", result);
+                return result;
 
             } catch (Exception e) {
                 logger.error("获取合约详情异常: {}", e.getMessage(), e);

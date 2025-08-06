@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>期货市场数据订阅测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .market-data {
+            background-color: #3d3d3d;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .price-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .price-item {
+            background-color: #4d4d4d;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .label {
+            color: #888;
+            font-size: 12px;
+        }
+        .value {
+            color: #fff;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .success {
+            color: #28a745;
+        }
+        .error {
+            color: #dc3545;
+        }
+        .warning {
+            color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>期货市场数据订阅测试</h1>
+        
+        <div class="test-section">
+            <h2>1. 测试市场数据订阅</h2>
+            <button onclick="testSubscribeMES()">订阅MES期货</button>
+            <button onclick="testSubscribeMNQ()">订阅MNQ期货</button>
+            <button onclick="testSubscribeES()">订阅ES期货</button>
+            <div id="subscribeResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. 获取活跃订阅</h2>
+            <button onclick="getActiveSubscriptions()">获取活跃订阅</button>
+            <div id="subscriptionResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. 实时市场数据</h2>
+            <div id="marketDataResults"></div>
+        </div>
+    </div>
+
+    <script>
+        // 测试订阅MES期货
+        async function testSubscribeMES() {
+            const resultsDiv = document.getElementById('subscribeResults');
+            resultsDiv.innerHTML = '<p>正在订阅MES期货...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:8080/api/tws/market-data/subscribe-futures', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        conId: '711280067',
+                        symbol: 'MES',
+                        contractMonth: '202509',
+                        expiration: '20250919'
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultsDiv.innerHTML = `
+                        <div class="market-data">
+                            <h3>✅ MES期货订阅成功</h3>
+                            <div class="price-info">
+                                <div class="price-item">
+                                    <div class="label">Ticker ID</div>
+                                    <div class="value">${data.data.tickerId}</div>
+                                </div>
+                                <div class="price-item">
+                                    <div class="label">合约ID</div>
+                                    <div class="value">${data.data.conId}</div>
+                                </div>
+                                <div class="price-item">
+                                    <div class="label">合约月份</div>
+                                    <div class="value">${data.data.contractMonth}</div>
+                                </div>
+                                <div class="price-item">
+                                    <div class="label">到期日期</div>
+                                    <div class="value">${data.data.expiration}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `<p class="error">订阅失败: ${response.status} ${response.statusText}</p>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">订阅错误: ${error.message}</p>`;
+            }
+        }
+
+        // 测试订阅MNQ期货
+        async function testSubscribeMNQ() {
+            const resultsDiv = document.getElementById('subscribeResults');
+            resultsDiv.innerHTML = '<p>正在订阅MNQ期货...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:8080/api/tws/market-data/subscribe-futures', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        conId: '711280073',
+                        symbol: 'MNQ',
+                        contractMonth: '202509',
+                        expiration: '20250919'
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultsDiv.innerHTML = `
+                        <div class="market-data">
+                            <h3>✅ MNQ期货订阅成功</h3>
+                            <div class="price-info">
+                                <div class="price-item">
+                                    <div class="label">Ticker ID</div>
+                                    <div class="value">${data.data.tickerId}</div>
+                                </div>
+                                <div class="price-item">
+                                    <div class="label">合约ID</div>
+                                    <div class="value">${data.data.conId}</div>
+                                </div>
+                                <div class="price-item">
+                                    <div class="label">合约月份</div>
+                                    <div class="value">${data.data.contractMonth}</div>
+                                </div>
+                                <div class="price-item">
+                                    <div class="label">到期日期</div>
+                                    <div class="value">${data.data.expiration}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `<p class="error">订阅失败: ${response.status} ${response.statusText}</p>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">订阅错误: ${error.message}</p>`;
+            }
+        }
+
+        // 测试订阅ES期货
+        async function testSubscribeES() {
+            const resultsDiv = document.getElementById('subscribeResults');
+            resultsDiv.innerHTML = '<p>正在订阅ES期货...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:8080/api/tws/market-data/subscribe-futures', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        conId: '495512563',
+                        symbol: 'ES',
+                        contractMonth: '202512',
+                        expiration: '20251219'
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultsDiv.innerHTML = `
+                        <div class="market-data">
+                            <h3>✅ ES期货订阅成功</h3>
+                            <div class="price-info">
+                                <div class="price-item">
+                                    <div class="label">Ticker ID</div>
+                                    <div class="value">${data.data.tickerId}</div>
+                                </div>
+                                <div class="price-item">
+                                    <div class="label">合约ID</div>
+                                    <div class="value">${data.data.conId}</div>
+                                </div>
+                                <div class="price-item">
+                                    <div class="label">合约月份</div>
+                                    <div class="value">${data.data.contractMonth}</div>
+                                </div>
+                                <div class="price-item">
+                                    <div class="label">到期日期</div>
+                                    <div class="value">${data.data.expiration}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `<p class="error">订阅失败: ${response.status} ${response.statusText}</p>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">订阅错误: ${error.message}</p>`;
+            }
+        }
+
+        // 获取活跃订阅
+        async function getActiveSubscriptions() {
+            const resultsDiv = document.getElementById('subscriptionResults');
+            resultsDiv.innerHTML = '<p>正在获取活跃订阅...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:8080/api/tws/market-data/subscriptions');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('活跃订阅:', data);
+                    
+                    if (data.data && Object.keys(data.data).length > 0) {
+                        let html = '<h3>✅ 活跃订阅列表</h3>';
+                        Object.entries(data.data).forEach(([tickerId, info]) => {
+                            html += `
+                                <div class="market-data">
+                                    <h4>${info.symbol} (Ticker ID: ${tickerId})</h4>
+                                    <div class="price-info">
+                                        <div class="price-item">
+                                            <div class="label">最后价格</div>
+                                            <div class="value">${info.lastPrice || 'N/A'}</div>
+                                        </div>
+                                        <div class="price-item">
+                                            <div class="label">买价</div>
+                                            <div class="value">${info.bid || 'N/A'}</div>
+                                        </div>
+                                        <div class="price-item">
+                                            <div class="label">卖价</div>
+                                            <div class="value">${info.ask || 'N/A'}</div>
+                                        </div>
+                                        <div class="price-item">
+                                            <div class="label">成交量</div>
+                                            <div class="value">${info.volume || 'N/A'}</div>
+                                        </div>
+                                        <div class="price-item">
+                                            <div class="label">时间戳</div>
+                                            <div class="value">${new Date(info.timestamp).toLocaleTimeString()}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        resultsDiv.innerHTML = html;
+                    } else {
+                        resultsDiv.innerHTML = '<p class="warning">暂无活跃订阅</p>';
+                    }
+                } else {
+                    resultsDiv.innerHTML = `<p class="error">获取失败: ${response.status} ${response.statusText}</p>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">获取错误: ${error.message}</p>`;
+            }
+        }
+
+        // 定期刷新市场数据
+        setInterval(getActiveSubscriptions, 5000);
+    </script>
+</body>
+</html> 

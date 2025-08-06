@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>期货到期日期测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .contract-info {
+            background-color: #3d3d3d;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .date-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .date-item {
+            background-color: #4d4d4d;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .label {
+            color: #888;
+            font-size: 12px;
+        }
+        .value {
+            color: #fff;
+            font-weight: bold;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .success {
+            color: #28a745;
+        }
+        .error {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>期货到期日期测试</h1>
+        
+        <div class="test-section">
+            <h2>1. 测试Java TWS API合约搜索</h2>
+            <button onclick="testTwsApiSearch()">搜索MES合约</button>
+            <button onclick="testTwsApiSearch('MNQ')">搜索MNQ合约</button>
+            <button onclick="testTwsApiSearch('ES')">搜索ES合约</button>
+            <div id="twsApiResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. 测试前端日期显示</h2>
+            <button onclick="testFrontendDisplay()">测试前端显示</button>
+            <div id="frontendResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. 模拟合约数据</h2>
+            <div id="mockDataResults"></div>
+        </div>
+    </div>
+
+    <script>
+        // 测试Java TWS API合约搜索
+        async function testTwsApiSearch(symbol = 'MES') {
+            const resultsDiv = document.getElementById('twsApiResults');
+            resultsDiv.innerHTML = '<p>正在搜索...</p>';
+            
+            try {
+                const response = await fetch(`http://localhost:8080/api/tws/contracts/search?symbol=${symbol}&secType=FUT&exchange=CME&currency=USD`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('TWS API响应:', data);
+                    
+                    let html = '<h3>搜索结果:</h3>';
+                    if (data.success && data.data) {
+                        const contracts = Array.isArray(data.data) ? data.data : [data.data];
+                        
+                        contracts.forEach((contract, index) => {
+                            html += `
+                                <div class="contract-info">
+                                    <h4>合约 ${index + 1}: ${contract.symbol}</h4>
+                                    <p><strong>描述:</strong> ${contract.description || 'N/A'}</p>
+                                    <p><strong>交易所:</strong> ${contract.exchange}</p>
+                                    <p><strong>合约ID:</strong> ${contract.conid}</p>
+                                    <div class="date-info">
+                                        ${contract.contractMonth ? `<div class="date-item"><div class="label">合约月份</div><div class="value">${contract.contractMonth}</div></div>` : ''}
+                                        ${contract.expiration ? `<div class="date-item"><div class="label">到期日期</div><div class="value">${contract.expiration}</div></div>` : ''}
+                                        ${contract.maturityDate ? `<div class="date-item"><div class="label">到期日</div><div class="value">${contract.maturityDate}</div></div>` : ''}
+                                        ${contract.realExpirationDate ? `<div class="date-item"><div class="label">实际到期日</div><div class="value">${contract.realExpirationDate}</div></div>` : ''}
+                                        ${contract.lastTradeTime ? `<div class="date-item"><div class="label">最后交易时间</div><div class="value">${contract.lastTradeTime}</div></div>` : ''}
+                                        ${contract.tradingClass ? `<div class="date-item"><div class="label">交易类</div><div class="value">${contract.tradingClass}</div></div>` : ''}
+                                        ${contract.multiplier ? `<div class="date-item"><div class="label">乘数</div><div class="value">${contract.multiplier}</div></div>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        html += '<p class="error">搜索失败或无结果</p>';
+                    }
+                    
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = `<p class="error">HTTP错误: ${response.status}</p>`;
+                }
+            } catch (error) {
+                console.error('TWS API搜索错误:', error);
+                resultsDiv.innerHTML = `<p class="error">搜索错误: ${error.message}</p>`;
+            }
+        }
+
+        // 测试前端日期显示
+        function testFrontendDisplay() {
+            const resultsDiv = document.getElementById('frontendResults');
+            
+            // 模拟从TWS API获取的合约数据
+            const mockContract = {
+                symbol: 'MES',
+                description: 'E-mini S&P 500 DEC25',
+                exchange: 'CME',
+                conid: '730283085',
+                contractMonth: '202412',
+                expiration: '2024-12-20',
+                maturityDate: '2024-12-20',
+                realExpirationDate: '2024-12-20',
+                lastTradeTime: '2024-12-19 16:00:00',
+                tradingClass: 'MES',
+                multiplier: '5'
+            };
+            
+            let html = `
+                <h3>前端显示测试:</h3>
+                <div class="contract-info">
+                    <h4>合约: ${mockContract.symbol}</h4>
+                    <p><strong>描述:</strong> ${mockContract.description}</p>
+                    <p><strong>交易所:</strong> ${mockContract.exchange}</p>
+                    <p><strong>合约ID:</strong> ${mockContract.conid}</p>
+                    <div class="date-info">
+                        <div class="date-item">
+                            <div class="label">合约月份</div>
+                            <div class="value">${mockContract.contractMonth}</div>
+                        </div>
+                        <div class="date-item">
+                            <div class="label">到期日期</div>
+                            <div class="value">${mockContract.expiration}</div>
+                        </div>
+                        <div class="date-item">
+                            <div class="label">到期日</div>
+                            <div class="value">${mockContract.maturityDate}</div>
+                        </div>
+                        <div class="date-item">
+                            <div class="label">实际到期日</div>
+                            <div class="value">${mockContract.realExpirationDate}</div>
+                        </div>
+                        <div class="date-item">
+                            <div class="label">最后交易时间</div>
+                            <div class="value">${mockContract.lastTradeTime}</div>
+                        </div>
+                        <div class="date-item">
+                            <div class="label">交易类</div>
+                            <div class="value">${mockContract.tradingClass}</div>
+                        </div>
+                        <div class="date-item">
+                            <div class="label">乘数</div>
+                            <div class="value">${mockContract.multiplier}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // 显示模拟合约数据
+        function showMockData() {
+            const resultsDiv = document.getElementById('mockDataResults');
+            
+            const mockContracts = [
+                {
+                    symbol: 'MES',
+                    description: 'E-mini S&P 500 DEC25',
+                    contractMonth: '202412',
+                    expiration: '2024-12-20',
+                    maturityDate: '2024-12-20'
+                },
+                {
+                    symbol: 'MNQ',
+                    description: 'E-mini NASDAQ-100 DEC25',
+                    contractMonth: '202412',
+                    expiration: '2024-12-20',
+                    maturityDate: '2024-12-20'
+                },
+                {
+                    symbol: 'ES',
+                    description: 'E-mini S&P 500 DEC25',
+                    contractMonth: '202412',
+                    expiration: '2024-12-20',
+                    maturityDate: '2024-12-20'
+                }
+            ];
+            
+            let html = '<h3>模拟合约数据:</h3>';
+            mockContracts.forEach(contract => {
+                html += `
+                    <div class="contract-info">
+                        <h4>${contract.symbol}</h4>
+                        <p><strong>描述:</strong> ${contract.description}</p>
+                        <div class="date-info">
+                            <div class="date-item">
+                                <div class="label">合约月份</div>
+                                <div class="value">${contract.contractMonth}</div>
+                            </div>
+                            <div class="date-item">
+                                <div class="label">到期日期</div>
+                                <div class="value">${contract.expiration}</div>
+                            </div>
+                            <div class="date-item">
+                                <div class="label">到期日</div>
+                                <div class="value">${contract.maturityDate}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // 页面加载时显示模拟数据
+        window.onload = function() {
+            showMockData();
+        };
+    </script>
+</body>
+</html> 

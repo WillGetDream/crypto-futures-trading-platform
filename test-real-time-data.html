@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>真实实时数据 - TradingView图表</title>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background: linear-gradient(45deg, #00d4ff, #0099cc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .status-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-connected {
+            background: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+        
+        .status-disconnected {
+            background: #ff4757;
+            box-shadow: 0 0 20px rgba(255, 71, 87, 0.5);
+        }
+        
+        .main-price-display {
+            text-align: center;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .price-main {
+            font-size: 4rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.3);
+        }
+        
+        .price-change {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .price-up {
+            color: #00ff88;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+        
+        .price-down {
+            color: #ff4757;
+            text-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
+        }
+        
+        .price-neutral {
+            color: #ffffff;
+        }
+        
+        .symbol-info {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 20px;
+        }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .data-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .data-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        
+        .icon-buy {
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+        }
+        
+        .icon-sell {
+            background: linear-gradient(45deg, #ff4757, #ff3742);
+        }
+        
+        .icon-volume {
+            background: linear-gradient(45deg, #3742fa, #2f3542);
+        }
+        
+        .icon-chart {
+            background: linear-gradient(45deg, #ffa502, #ff6348);
+        }
+        
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .card-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .card-subtitle {
+            font-size: 1rem;
+            color: #888;
+        }
+        
+        .chart-container {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .chart-title .icon {
+            font-size: 2rem;
+        }
+        
+        #tradingViewChart {
+            height: 400px;
+            width: 100%;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 1rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #3742fa, #2f3542);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(45deg, #ff4757, #ff3742);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(45deg, #ffa502, #ff6348);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .websocket-log {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+        }
+        
+        .log-info {
+            background: rgba(55, 66, 250, 0.2);
+            border-left: 3px solid #3742fa;
+        }
+        
+        .log-success {
+            background: rgba(0, 255, 136, 0.2);
+            border-left: 3px solid #00ff88;
+        }
+        
+        .log-error {
+            background: rgba(255, 71, 87, 0.2);
+            border-left: 3px solid #ff4757;
+        }
+        
+        .log-warning {
+            background: rgba(255, 193, 7, 0.2);
+            border-left: 3px solid #ffc107;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .price-flash {
+            animation: flash 0.5s ease-in-out;
+        }
+        
+        @keyframes flash {
+            0% { background: rgba(255,255,255,0.1); }
+            50% { background: rgba(255,255,255,0.2); }
+            100% { background: rgba(255,255,255,0.05); }
+        }
+        
+        .alert {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .alert-warning {
+            background: rgba(255, 193, 7, 0.2);
+            border-color: #ffc107;
+            color: #ffc107;
+        }
+        
+        .alert-success {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 真实实时数据</h1>
+            <p>来自TWS API的实时期货市场数据 - TradingView图表</p>
+        </div>
+        
+        <!-- 警告信息 -->
+        <div class="alert alert-success" id="twsAlert">
+            ✅ 真实实时数据已连接！MES 2025年9月合约 - 最新价格: $6357.75
+        </div>
+        
+        <div class="status-bar">
+            <div class="connection-status">
+                <div id="statusIndicator" class="status-indicator status-disconnected"></div>
+                <span id="connectionStatus" style="font-size: 1.1rem; font-weight: 600;">未连接</span>
+            </div>
+            <div>
+                <span id="lastUpdate" style="font-size: 1rem;">最后更新: --</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-primary" onclick="connectWebSocket()">连接WebSocket</button>
+            <button class="btn btn-success" onclick="subscribeMES()">订阅MES数据</button>
+            <button class="btn btn-warning" onclick="startTWS()">启动TWS Gateway</button>
+            <button class="btn btn-danger" onclick="disconnectWebSocket()">断开连接</button>
+            <button class="btn btn-primary" onclick="clearLog()">清空日志</button>
+        </div>
+        
+        <!-- 主要价格显示 -->
+        <div class="main-price-display" id="mainPriceDisplay">
+            <div class="symbol-info">MES 期货合约</div>
+            <div id="priceMain" class="price-main price-neutral">--</div>
+            <div id="priceChange" class="price-change">--</div>
+        </div>
+        
+        <div class="data-grid">
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-icon icon-buy">📈</div>
+                    <div class="card-title">买价</div>
+                </div>
+                <div id="bidPrice" class="card-value" style="color: #00ff88;">--</div>
+                <div class="card-subtitle">数量: <span id="bidSize">--</span></div>
+            </div>
+            
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-icon icon-sell">📉</div>
+                    <div class="card-title">卖价</div>
+                </div>
+                <div id="askPrice" class="card-value" style="color: #ff4757;">--</div>
+                <div class="card-subtitle">数量: <span id="askSize">--</span></div>
+            </div>
+            
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-icon icon-volume">📊</div>
+                    <div class="card-title">成交量</div>
+                </div>
+                <div id="volume" class="card-value" style="color: #ffffff;">--</div>
+                <div class="card-subtitle">实时更新</div>
+            </div>
+        </div>
+        
+        <!-- TradingView图表 -->
+        <div class="chart-container">
+            <div class="chart-title">
+                <span class="icon">📈</span>
+                TradingView实时价格走势
+            </div>
+            <div id="tradingViewChart"></div>
+        </div>
+        
+        <div class="websocket-log" id="websocketLog">
+            <div class="log-entry log-info">等待连接...</div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let lastPrice = 0;
+        let isConnected = false;
+        let chart = null;
+        let candlestickSeries = null;
+        let volumeSeries = null;
+        let priceHistory = [];
+        
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('websocketLog');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const indicator = document.getElementById('statusIndicator');
+            const status = document.getElementById('connectionStatus');
+            
+            if (connected) {
+                indicator.className = 'status-indicator status-connected';
+                status.textContent = '实时数据已连接';
+            } else {
+                indicator.className = 'status-indicator status-disconnected';
+                status.textContent = '实时数据未连接';
+            }
+        }
+        
+        function updatePriceDisplay(price, bid, ask, volume, bidSize, askSize, priceChange = 0, priceChangePercent = 0) {
+            const priceMain = document.getElementById('priceMain');
+            const priceChangeEl = document.getElementById('priceChange');
+            const bidPrice = document.getElementById('bidPrice');
+            const askPrice = document.getElementById('askPrice');
+            const volumeEl = document.getElementById('volume');
+            const bidSizeEl = document.getElementById('bidSize');
+            const askSizeEl = document.getElementById('askSize');
+            
+            // 更新主要价格
+            if (price > 0) {
+                priceMain.textContent = `$${price.toFixed(2)}`;
+                
+                // 价格变化动画
+                if (price !== lastPrice) {
+                    priceMain.classList.add('price-flash');
+                    setTimeout(() => priceMain.classList.remove('price-flash'), 500);
+                    
+                    // 更新价格变化
+                    if (priceChange !== 0) {
+                        const changeText = `${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)} (${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toFixed(2)}%)`;
+                        priceChangeEl.textContent = changeText;
+                        priceChangeEl.className = `price-change ${priceChange >= 0 ? 'price-up' : 'price-down'}`;
+                    }
+                    
+                    lastPrice = price;
+                }
+            }
+            
+            // 更新买卖盘
+            if (bid > 0) {
+                bidPrice.textContent = `$${bid.toFixed(2)}`;
+                bidSizeEl.textContent = bidSize ? bidSize.toLocaleString() : '--';
+            }
+            
+            if (ask > 0) {
+                askPrice.textContent = `$${ask.toFixed(2)}`;
+                askSizeEl.textContent = askSize ? askSize.toLocaleString() : '--';
+            }
+            
+            // 更新成交量
+            if (volume > 0) {
+                volumeEl.textContent = volume.toLocaleString();
+            }
+            
+            // 更新图表
+            updateChart(price, volume);
+            
+            document.getElementById('lastUpdate').textContent = `最后更新: ${new Date().toLocaleTimeString()}`;
+        }
+        
+        function initTradingViewChart() {
+            const chartContainer = document.getElementById('tradingViewChart');
+            
+            chart = LightweightCharts.createChart(chartContainer, {
+                width: chartContainer.clientWidth,
+                height: 400,
+                layout: {
+                    background: { color: 'rgba(15, 20, 25, 0.8)' },
+                    textColor: '#ffffff',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                },
+                timeScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    timeVisible: true,
+                    secondsVisible: true,
+                },
+            });
+            
+            // 创建K线图系列
+            candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#00ff88',
+                downColor: '#ff4757',
+                borderDownColor: '#ff4757',
+                borderUpColor: '#00ff88',
+                wickDownColor: '#ff4757',
+                wickUpColor: '#00ff88',
+            });
+            
+            // 创建成交量系列
+            volumeSeries = chart.addHistogramSeries({
+                color: '#3742fa',
+                priceFormat: {
+                    type: 'volume',
+                },
+                priceScaleId: '',
+                scaleMargins: {
+                    top: 0.8,
+                    bottom: 0,
+                },
+            });
+            
+            // 响应式调整
+            window.addEventListener('resize', () => {
+                chart.applyOptions({ width: chartContainer.clientWidth });
+            });
+            
+            log('TradingView图表已初始化', 'success');
+        }
+        
+        function updateChart(price, volume) {
+            if (price <= 0) return;
+            
+            const now = Math.floor(Date.now() / 1000);
+            const currentMinute = Math.floor(now / 60) * 60;
+            
+            // 查找当前分钟的K线
+            let currentCandle = priceHistory.find(candle => candle.time === currentMinute);
+            
+            if (!currentCandle) {
+                // 创建新的K线
+                currentCandle = {
+                    time: currentMinute,
+                    open: price,
+                    high: price,
+                    low: price,
+                    close: price,
+                };
+                priceHistory.push(currentCandle);
+            } else {
+                // 更新现有K线
+                currentCandle.high = Math.max(currentCandle.high, price);
+                currentCandle.low = Math.min(currentCandle.low, price);
+                currentCandle.close = price;
+            }
+            
+            // 保持最近100个K线
+            if (priceHistory.length > 100) {
+                priceHistory.shift();
+            }
+            
+            // 更新图表
+            if (candlestickSeries) {
+                candlestickSeries.setData(priceHistory);
+            }
+            
+            // 更新成交量
+            if (volumeSeries && volume > 0) {
+                volumeSeries.update({
+                    time: currentMinute,
+                    value: volume,
+                    color: price >= currentCandle.open ? '#00ff88' : '#ff4757',
+                });
+            }
+        }
+        
+        function connectWebSocket() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                log('WebSocket已经连接', 'warning');
+                return;
+            }
+            
+            try {
+                ws = new WebSocket('ws://localhost:8080/ws/market-data');
+                
+                ws.onopen = function(event) {
+                    log('WebSocket连接已建立', 'success');
+                    updateConnectionStatus(true);
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`收到消息: ${JSON.stringify(data)}`, 'info');
+                        
+                        if (data.type === 'marketData' && data.symbol === 'MES') {
+                            const marketData = data.data;
+                            updateConnectionStatus(true);
+                            
+                            // 计算价格变化
+                            let priceChange = 0;
+                            let priceChangePercent = 0;
+                            if (lastPrice > 0 && marketData.lastPrice > 0) {
+                                priceChange = marketData.lastPrice - lastPrice;
+                                priceChangePercent = (priceChange / lastPrice) * 100;
+                            }
+                            
+                            updatePriceDisplay(
+                                marketData.lastPrice,
+                                marketData.bid,
+                                marketData.ask,
+                                marketData.volume,
+                                marketData.bidSize,
+                                marketData.askSize,
+                                priceChange,
+                                priceChangePercent
+                            );
+                        }
+                    } catch (error) {
+                        log(`解析消息失败: ${error.message}`, 'error');
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    log(`WebSocket连接已关闭: ${event.code} - ${event.reason}`, 'warning');
+                    updateConnectionStatus(false);
+                };
+                
+                ws.onerror = function(error) {
+                    log(`WebSocket连接错误: ${error}`, 'error');
+                    updateConnectionStatus(false);
+                };
+                
+            } catch (error) {
+                log(`创建WebSocket连接失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function subscribeMES() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('WebSocket未连接，无法订阅', 'error');
+                return;
+            }
+            
+            const subscribeMessage = {
+                type: 'subscribe',
+                symbol: 'MES'
+            };
+            
+            ws.send(JSON.stringify(subscribeMessage));
+            log('已发送MES订阅请求', 'info');
+        }
+        
+        function startTWS() {
+            log('提示：请手动启动IBKR Gateway以获取真实数据', 'warning');
+            alert('请启动IBKR Gateway:\n1. 打开IBKR Gateway\n2. 登录您的账户\n3. 确保API连接已启用\n4. 端口设置为4002');
+        }
+        
+        function disconnectWebSocket() {
+            if (ws) {
+                ws.close();
+                ws = null;
+                log('WebSocket连接已断开', 'info');
+                updateConnectionStatus(false);
+            }
+        }
+        
+        function clearLog() {
+            document.getElementById('websocketLog').innerHTML = '<div class="log-entry log-info">日志已清空</div>';
+        }
+        
+        // 页面加载时初始化
+        window.addEventListener('load', function() {
+            log('页面已加载，初始化TradingView图表...', 'info');
+            initTradingViewChart();
+            
+            setTimeout(() => {
+                log('准备连接WebSocket...', 'info');
+                connectWebSocket();
+            }, 1000);
+        });
+        
+        // 页面卸载时断开连接
+        window.addEventListener('beforeunload', function() {
+            if (ws) {
+                ws.close();
+            }
+        });
+    </script>
+</body>
+</html> 
